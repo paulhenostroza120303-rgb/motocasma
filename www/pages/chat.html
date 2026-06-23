@@ -89,8 +89,18 @@
     container.scrollTop = container.scrollHeight;
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', async () => {
     if (!API.isLoggedIn()) { location.href = 'profile.html'; return; }
+    if (!rideId) {
+      try {
+        const active = await API.request('/api/rides/active');
+        if (active.ride) rideId = active.ride._id;
+        if (!rideId) {
+          const driverActive = await API.request('/api/rides/driver-active');
+          if (driverActive.ride) rideId = driverActive.ride._id;
+        }
+      } catch {}
+    }
     if (rideId) SOCKET.pendingJoin = rideId;
     SOCKET.connect();
     SOCKET.on('chat:receive', (data) => {
