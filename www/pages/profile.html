@@ -78,7 +78,7 @@
     <div class="menu-group">
       <div class="menu-item" onclick="syncProfile();alert('Perfil actualizado')"><i class="fas fa-rotate"></i><span>Recargar datos</span><i class="fas fa-chevron-right arrow"></i></div>
       <div class="menu-item"><i class="fas fa-user-pen"></i><span>Editar perfil</span><i class="fas fa-chevron-right arrow"></i></div>
-      <div class="menu-item"><i class="fas fa-motorcycle"></i><span>Modo conductor</span><i class="fas fa-chevron-right arrow"></i></div>
+      <div class="menu-item" id="driverMenuItem" style="display:none" onclick="location.href='driver.html'"><i class="fas fa-motorcycle"></i><span>Modo conductor</span><i class="fas fa-chevron-right arrow"></i></div>
       <div class="menu-item" id="adminMenuItem" style="display:none" onclick="location.href='admin-drivers.html'"><i class="fas fa-crown" style="color:#f59e0b"></i><span style="color:#f59e0b;font-weight:700">Panel de Administrador</span><i class="fas fa-chevron-right arrow"></i></div>
       <div class="menu-item"><i class="fas fa-bell"></i><span>Notificaciones</span><i class="fas fa-chevron-right arrow"></i></div>
       <div class="menu-item"><i class="fas fa-circle-info"></i><span>Ayuda</span><i class="fas fa-chevron-right arrow"></i></div>
@@ -251,6 +251,7 @@
     const age = user.age ? ' | Edad: ' + user.age : '';
     document.getElementById('profileDniAge').textContent = dni + age;
     if (API.isOwner()) document.getElementById('adminMenuItem').style.display = 'flex';
+    if (user.role === 'driver' || user.role === 'owner') document.getElementById('driverMenuItem').style.display = 'flex';
   }
 
   function logout() {
