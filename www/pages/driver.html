@@ -247,8 +247,6 @@
   async function cancelCurrentRide() {
     if (!currentRide || !confirm('Cancelar viaje?')) return;
     try {
-      const userId = currentRide.userId?._id || currentRide.userId;
-      SOCKET.emit('ride:cancelled', { rideId: currentRide._id, userId });
       await API.cancelRide(currentRide._id);
       currentRide = null;
       document.getElementById('activeRideSection').style.display = 'none';
@@ -296,6 +294,16 @@
   });
 
   SOCKET.on('ride:taken', (data) => {
+    const el = document.getElementById('req-' + data.rideId);
+    if (el) el.remove();
+  });
+
+  SOCKET.on('ride:cancelled', (data) => {
+    if (currentRide && currentRide._id === data.rideId) {
+      currentRide = null;
+      document.getElementById('activeRideSection').style.display = 'none';
+      alert('Viaje cancelado por el usuario');
+    }
     const el = document.getElementById('req-' + data.rideId);
     if (el) el.remove();
   });

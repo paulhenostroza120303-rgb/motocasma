@@ -118,12 +118,24 @@ router.patch('/:id/complete', async (req, res) => {
 });
 
 router.patch('/:id/cancel', async (req, res) => {
+  const driver = await Driver.findOne({ userId: req.userId });
+  const query = driver
+    ? { _id: req.params.id, driverId: driver._id }
+    : { _id: req.params.id, userId: req.userId };
   const ride = await Ride.findOneAndUpdate(
-    { _id: req.params.id, userId: req.userId },
+    query,
     { status: 'cancelled' },
     { new: true }
   );
   if (!ride) return res.status(404).json({ error: 'Viaje no encontrado' });
+
+  const io = req.app.get('io');
+  if (io) {
+    const targetUserId = driver ? ride.userId : req.userId;
+    io.to(`user:${targetUserId}`).emit('ride:cancelled', { rideId: ride._id });
+    io.to('drivers').emit('ride:cancelled', { rideId: ride._id });
+  }
+
   res.json({ ride });
 });
 
