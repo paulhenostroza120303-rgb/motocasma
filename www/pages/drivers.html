@@ -62,8 +62,15 @@
   let allDrivers = [];
 
   async function loadDrivers() {
-    const lat = window.userLat || -9.4531;
-    const lng = window.userLng || -78.2989;
+    let lat = -9.4747, lng = -78.3016;
+    if (navigator.geolocation) {
+      try {
+        const pos = await new Promise((ok, err) => navigator.geolocation.getCurrentPosition(ok, err, { timeout: 5000 }));
+        lat = pos.coords.latitude;
+        lng = pos.coords.longitude;
+        window.userLat = lat; window.userLng = lng;
+      } catch {}
+    }
     try {
       const data = await API.getNearbyDrivers(lat, lng);
       allDrivers = data.drivers || [];

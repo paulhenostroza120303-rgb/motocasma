@@ -42,8 +42,12 @@ async function start() {
     if (process.env.MONGODB_URI) {
       await mongoose.connect(process.env.MONGODB_URI);
       console.log('Conectado a MongoDB');
-      await Driver.createIndexes();
-      console.log('Indices creados');
+      try {
+        await Driver.createIndexes();
+        console.log('Indices de Driver creados/verificados');
+      } catch (e) {
+        console.log('Error creando indices:', e.message);
+      }
     } else {
       console.log('MongoDB no configurado, modo sin BD');
     }

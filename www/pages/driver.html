@@ -125,6 +125,7 @@
       watchId = navigator.geolocation.watchPosition(async (pos) => {
         const { latitude: lat, longitude: lng } = pos.coords;
         try {
+          await API.request('/api/drivers/location', { method: 'PUT', body: JSON.stringify({ lat, lng }) });
           await API.request('/api/drivers/availability', { method: 'PUT', body: JSON.stringify({ available: true }) });
         } catch {}
         if (currentRide) {
