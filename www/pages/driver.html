@@ -112,6 +112,9 @@
   async function toggleAvailability() {
     available = !available;
     updateStatus();
+    try {
+      await API.request('/api/drivers/availability', { method: 'PUT', body: JSON.stringify({ available }) });
+    } catch {}
     if (available) {
       SOCKET.connect();
       startLocationTracking();
@@ -280,14 +283,11 @@
   document.addEventListener('DOMContentLoaded', async () => {
     await API.refreshProfile();
     try {
-      const profile = await API.getProfile();
-      if (profile) {
-        const driverData = await API.request('/api/drivers/status');
-        if (driverData.driver) {
-          available = driverData.driver.available;
-          updateStatus();
-          if (available) SOCKET.connect();
-        }
+      const driverData = await API.request('/api/drivers/status');
+      if (driverData.driver) {
+        available = driverData.driver.available;
+        updateStatus();
+        if (available) SOCKET.connect();
       }
     } catch {}
     loadActiveRide();
