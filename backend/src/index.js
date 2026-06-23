@@ -11,6 +11,7 @@ import rideRoutes from './routes/rides.js';
 import driverRoutes from './routes/drivers.js';
 import ownerRoutes from './routes/owner.js';
 import { setupSocketHandlers } from './socket/handler.js';
+import Driver from './models/Driver.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -39,6 +40,8 @@ async function start() {
     if (process.env.MONGODB_URI) {
       await mongoose.connect(process.env.MONGODB_URI);
       console.log('Conectado a MongoDB');
+      await Driver.createIndexes();
+      console.log('Indices creados');
     } else {
       console.log('MongoDB no configurado, modo sin BD');
     }
