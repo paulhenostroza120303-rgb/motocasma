@@ -101,6 +101,8 @@
     try {
       await API.sendCode(phone);
       const data = await API.verifyCode(phone, name || phone);
+      API.setToken(data.token);
+      API.setUser(data.user);
       alert('Bienvenido ' + (data.user.name || '') + '!');
       SOCKET.connect();
       showProfile();
