@@ -148,10 +148,6 @@
     const dest = selectedDest || { address: destInput?.value || 'Plaza de Armas', lat: -9.4747, lng: -78.3016 };
     try {
       const data = await API.requestRide(pickup, dest, 8);
-      if (data.ride) {
-        SOCKET.connect();
-        SOCKET.emit('ride:request', { rideId: data.ride._id, pickup: data.ride.pickup, destination: data.ride.destination, price: data.ride.price, userName: (API.getUser() || {}).name || 'Usuario' });
-      }
       alert('Viaje solicitado! Buscando conductor...');
       location.href = 'trip.html';
     } catch(err) { alert('Error: ' + err.message); }

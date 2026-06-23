@@ -2,6 +2,7 @@ import { Router } from 'express';
 import authMiddleware from '../middleware/auth.js';
 import Ride from '../models/Ride.js';
 import Driver from '../models/Driver.js';
+import User from '../models/User.js';
 
 const router = Router();
 router.use(authMiddleware);
@@ -26,6 +27,20 @@ router.post('/request', async (req, res) => {
       }
     }
   }).limit(5);
+
+  const user = await User.findById(req.userId);
+
+  const io = req.app.get('io');
+  if (io) {
+    io.to('drivers').emit('ride:new', {
+      rideId: ride._id,
+      pickup: ride.pickup,
+      destination: ride.destination,
+      price: ride.price,
+      userName: user?.name || 'Usuario',
+      timestamp: new Date()
+    });
+  }
 
   res.json({ ride, nearbyDrivers });
 });
