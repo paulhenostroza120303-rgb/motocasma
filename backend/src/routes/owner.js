@@ -9,8 +9,13 @@ const router = Router();
 router.use(authMiddleware);
 router.use(ownerMiddleware);
 
+function normalizePhone(p) {
+  return p.replace(/[\s\-\(\)]/g, '');
+}
+
 router.post('/drivers', async (req, res) => {
-  const { name, phone, photoURL, vehiclePlate, vehicleType } = req.body;
+  const { name, photoURL, vehiclePlate, vehicleType } = req.body;
+  const phone = normalizePhone(req.body.phone || '');
   if (!name || !phone || !vehiclePlate) {
     return res.status(400).json({ error: 'Nombre, telefono y placa requeridos' });
   }

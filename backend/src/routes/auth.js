@@ -5,6 +5,10 @@ import User from '../models/User.js';
 
 const router = Router();
 
+function normalizePhone(p) {
+  return p.replace(/[\s\-\(\)]/g, '');
+}
+
 let firebaseInitialized = false;
 
 function initFirebase() {
@@ -22,7 +26,8 @@ function initFirebase() {
 }
 
 router.post('/firebase-verify', async (req, res) => {
-  const { firebaseToken, phone, name, dni, age } = req.body;
+  const { firebaseToken, phone: rawPhone, name, dni, age } = req.body;
+  const phone = normalizePhone(rawPhone);
   if (!firebaseToken || !phone) {
     return res.status(400).json({ error: 'Token y número requeridos' });
   }
