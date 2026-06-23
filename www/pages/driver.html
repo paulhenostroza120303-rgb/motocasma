@@ -92,6 +92,7 @@
   let currentRide = null;
   let watchId = null;
   let onlineTimer = null;
+  let updatingRide = false;
 
   function updateOnlineTime() {
     const start = localStorage.getItem('motocasma_online_start');
@@ -170,6 +171,18 @@
         showActiveRide(data.ride);
       }
     } catch {}
+    loadDriverStats();
+  }
+
+  async function loadDriverStats() {
+    try {
+      const data = await API.request('/api/drivers/status');
+      if (data.driver) {
+        document.getElementById('earningsAmount').textContent = 'S/ ' + (data.driver.earnings || 0).toFixed(2);
+        document.getElementById('tripsCount').textContent = data.driver.totalTrips || 0;
+        document.getElementById('driverRating').textContent = (data.driver.rating || 5.0).toFixed(1);
+      }
+    } catch {}
   }
 
   function showActiveRide(ride) {
@@ -199,7 +212,8 @@
   }
 
   async function updateRideStatus(status) {
-    if (!currentRide) return;
+    if (!currentRide || updatingRide) return;
+    updatingRide = true;
     const userId = currentRide.userId?._id || currentRide.userId;
     try {
       if (status === 'arrived') {
@@ -212,8 +226,11 @@
         await API.completeRide(currentRide._id);
         SOCKET.emit('ride:complete', { rideId: currentRide._id, userId });
         currentRide = null;
-        document.getElementById('activeRideSection').style.display = 'none';
-        document.getElementById('activeRideSection').innerHTML = '';
+        const section = document.getElementById('activeRideSection');
+        section.style.display = 'none';
+        section.innerHTML = '';
+        updatingRide = false;
+        loadDriverStats();
         alert('Viaje completado!');
         return;
       }
@@ -223,6 +240,8 @@
         showActiveRide(updated.ride);
       }
     } catch (err) { alert('Error: ' + err.message); }
+    updatingRide = false;
+    loadDriverStats();
   }
 
   async function cancelCurrentRide() {
@@ -285,18 +304,12 @@
     if (!available) { alert('Activate primero'); return; }
     try {
       const user = API.getUser();
-      await API.acceptRide(rideId);
-      SOCKET.emit('ride:accept', {
-        rideId,
-        userId: currentRide?.userId?._id || currentRide?.userId || '',
-        driverId: user?.id || user?._id,
-        driverName: user?.name || 'Conductor',
-        driverPhone: user?.phone || '',
-        driverPlate: '---'
-      });
-      currentRide = { _id: rideId, userId: { name: userName }, pickup: { address: pickup }, destination: { address: dest }, price, status: 'accepted' };
+      const result = await API.acceptRide(rideId);
+      const ride = result.ride;
+      currentRide = ride || { _id: rideId, userId: { name: userName }, pickup: { address: pickup }, destination: { address: dest }, price, status: 'accepted' };
       document.getElementById('requestsContainer').innerHTML = '';
       showActiveRide(currentRide);
+      loadDriverStats();
       alert('Viaje aceptado! Dirigete al punto de recogida.');
     } catch (err) { alert('Error: ' + err.message); }
   }

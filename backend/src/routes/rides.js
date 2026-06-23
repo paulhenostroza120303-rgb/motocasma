@@ -71,8 +71,22 @@ router.patch('/:id/accept', async (req, res) => {
     req.params.id,
     { driverId: driver._id, status: 'accepted' },
     { new: true }
-  );
+  ).populate('userId', 'name phone');
   if (!ride) return res.status(404).json({ error: 'Viaje no encontrado' });
+
+  const io = req.app.get('io');
+  if (io) {
+    io.to(`user:${ride.userId._id || ride.userId}`).emit('ride:accepted', {
+      rideId: ride._id,
+      driverId: driver._id,
+      driverName: driver.name,
+      driverPhone: driver.phone,
+      driverPlate: driver.vehiclePlate,
+      driverLat: driver.location?.coordinates?.[1] || 0,
+      driverLng: driver.location?.coordinates?.[0] || 0
+    });
+    io.to('drivers').emit('ride:taken', { rideId: ride._id });
+  }
   res.json({ ride });
 });
 
