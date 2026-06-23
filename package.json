@@ -2,15 +2,16 @@
   "name": "motocasma",
   "version": "1.0.0",
   "description": "MotoCasma - Servicio de Mototaxis en Casma",
-  "main": "index.js",
+  "private": true,
   "scripts": {
+    "build": "cd backend && npm install",
+    "start": "cd backend && node src/index.js",
     "serve": "npx http-server www -p 8080 -o",
-    "build": "npx cap copy",
     "sync": "npx cap sync",
     "open:android": "npx cap open android",
     "build:android": "npx cap sync && npx cap copy && cd android && gradlew assembleDebug"
   },
-  "keywords": ["mototaxi", "casma", "rideshare"],
+  "keywords": ["motocasma", "casma", "rideshare"],
   "author": "",
   "license": "ISC"
 }
