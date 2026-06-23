@@ -91,6 +91,16 @@
   let available = false;
   let currentRide = null;
   let watchId = null;
+  let onlineTimer = null;
+
+  function updateOnlineTime() {
+    const start = localStorage.getItem('motocasma_online_start');
+    if (!start) { document.getElementById('onlineTime').textContent = '--'; return; }
+    const elapsed = Math.floor((Date.now() - parseInt(start)) / 1000);
+    const h = Math.floor(elapsed / 3600);
+    const m = Math.floor((elapsed % 3600) / 60);
+    document.getElementById('onlineTime').textContent = (h > 0 ? h + 'h ' : '') + m + 'min';
+  }
 
   function updateStatus() {
     const icon = document.getElementById('statusIcon');
@@ -116,9 +126,17 @@
       await API.request('/api/drivers/availability', { method: 'PUT', body: JSON.stringify({ available }) });
     } catch {}
     if (available) {
+      if (!localStorage.getItem('motocasma_online_start')) {
+        localStorage.setItem('motocasma_online_start', Date.now().toString());
+      }
+      onlineTimer = setInterval(updateOnlineTime, 10000);
+      updateOnlineTime();
       SOCKET.connect();
       startLocationTracking();
     } else {
+      localStorage.removeItem('motocasma_online_start');
+      if (onlineTimer) { clearInterval(onlineTimer); onlineTimer = null; }
+      document.getElementById('onlineTime').textContent = '--';
       stopLocationTracking();
     }
   }
@@ -287,7 +305,13 @@
       if (driverData.driver) {
         available = driverData.driver.available;
         updateStatus();
-        if (available) SOCKET.connect();
+        if (available) {
+          SOCKET.connect();
+          if (localStorage.getItem('motocasma_online_start')) {
+            onlineTimer = setInterval(updateOnlineTime, 10000);
+            updateOnlineTime();
+          }
+        }
       }
     } catch {}
     loadActiveRide();
