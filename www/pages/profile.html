@@ -244,13 +244,7 @@
   }
 
   async function syncProfile() {
-    try {
-      const fresh = await API.getProfile();
-      if (fresh) {
-        API.setUser({ id: fresh._id, _id: fresh._id, phone: fresh.phone, name: fresh.name, dni: fresh.dni, age: fresh.age, role: fresh.role });
-      }
-    } catch {}
-    const user = API.getUser();
+    const user = await API.refreshProfile();
     document.getElementById('profileName').textContent = user.name || 'Usuario';
     document.getElementById('profilePhone').textContent = user.phone || '---';
     const dni = user.dni ? 'DNI: ' + user.dni : '';

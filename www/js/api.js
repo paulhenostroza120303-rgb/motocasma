@@ -16,6 +16,16 @@ const API = {
     localStorage.setItem('motocasma_user', JSON.stringify(user));
   },
 
+  async refreshProfile() {
+    try {
+      const fresh = await this.getProfile();
+      if (fresh) {
+        this.setUser({ id: fresh._id, _id: fresh._id, phone: fresh.phone, name: fresh.name, dni: fresh.dni, age: fresh.age, role: fresh.role });
+      }
+      return this.getUser();
+    } catch { return this.getUser(); }
+  },
+
   async request(endpoint, options = {}) {
     const token = this.getToken();
     const headers = { 'Content-Type': 'application/json', ...options.headers };
