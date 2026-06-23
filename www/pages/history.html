@@ -62,13 +62,10 @@
   </div>
 </div>
 <script>
+  if (!API.isLoggedIn()) { location.href = 'profile.html'; }
   let allRides = [];
 
   async function loadHistory() {
-    if (!API.isLoggedIn()) {
-      document.getElementById('historyList').innerHTML = '<div class="empty"><i class="fas fa-user-lock"></i>Inicia sesion para ver tu historial</div>';
-      return;
-    }
     try {
       const data = await API.getHistory();
       allRides = data.rides || [];

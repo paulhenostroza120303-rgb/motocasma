@@ -88,6 +88,7 @@
   </div>
 </div>
 <script>
+  if (!API.isLoggedIn()) { location.href = 'profile.html'; }
   let casmaPlaces = [];
   let pickupInput, destInput, priceDisplay;
   let selectedPickup = null, selectedDest = null;
@@ -137,10 +138,6 @@
     destInput = document.getElementById('destInput');
     priceDisplay = document.querySelector('.amount');
     loadPlaces();
-    if (!API.isLoggedIn()) {
-      document.querySelector('.btn-primary').textContent = ' INICIAR SESION PRIMERO';
-      document.querySelector('.btn-primary').onclick = () => { location.href = 'profile.html'; };
-    }
   });
 
   function selectVehicle(el) { document.querySelectorAll('.vehicle-card').forEach(c => c.classList.remove('selected')); el.classList.add('selected'); }

@@ -87,6 +87,7 @@
   </div>
 </div>
 <script>
+  if (!API.isLoggedIn()) { location.href = 'profile.html'; }
   let available = false;
   let currentRide = null;
   let watchId = null;
