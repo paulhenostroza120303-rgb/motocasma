@@ -98,9 +98,8 @@
         <div><label>DNI</label><input type="text" id="dniInput" placeholder="12345678" maxlength="8" /></div>
         <div><label>Edad</label><input type="number" id="ageInput" placeholder="25" min="1" max="120" /></div>
       </div>
-      <div id="recaptchaContainer" class="recaptcha-wrap"></div>
-      <button class="btn-primary" id="sendCodeBtn" onclick="sendCode()"><i class="fas fa-envelope"></i> Enviar codigo SMS</button>
-      <p style="text-align:center;font-size:12px;color:#9ca3af;margin-top:10px">Te enviaremos un codigo SMS de verificacion</p>
+      <button class="btn-primary" id="sendCodeBtn" onclick="sendCode()"><i class="fas fa-envelope"></i> Continuar</button>
+      <p style="text-align:center;font-size:12px;color:#9ca3af;margin-top:10px">Usa el codigo de prueba: 123456</p>
     </div>
 
     <div class="form-card hidden" id="step2Form">
@@ -115,6 +114,7 @@
         <input type="text" maxlength="1" oninput="moveNext(this, 4)" onkeydown="moveBack(this, event)" />
         <input type="text" maxlength="1" oninput="moveNext(this, 5)" onkeydown="moveBack(this, event)" />
       </div>
+      <p style="text-align:center;font-size:13px;color:#6b7280;margin-bottom:12px" id="verifyHint"></p>
       <button class="btn-primary" id="verifyBtn" onclick="verifyCode()"><i class="fas fa-check"></i> Verificar</button>
       <button class="btn-secondary" onclick="resetForm()"><i class="fas fa-arrow-left"></i> Volver</button>
       <p style="text-align:center;font-size:12px;color:#9ca3af;margin-top:10px" id="resendText">¿No recibiste el codigo? <a href="#" onclick="resendCode()" style="color:#f59e0b;font-weight:600">Reenviar</a></p>
@@ -131,7 +131,6 @@
 </div>
 
 <script>
-  let firebaseAuth = null;
   let confirmationResult = null;
   let recaptchaVerifier = null;
 
@@ -139,14 +138,9 @@
     try {
       if (typeof firebase === 'undefined') return;
       const cfg = CONFIG.FIREBASE;
-      if (!cfg.apiKey || cfg.apiKey === 'REEMPLAZA_CON_TU_API_KEY') {
-        console.log('Firebase no configurado - modo offline');
-        return;
-      }
+      if (!cfg.apiKey || cfg.apiKey === 'REEMPLAZA_CON_TU_API_KEY') return;
       firebase.initializeApp(cfg);
-      firebaseAuth = firebase.auth();
-      firebaseAuth.useDeviceLanguage();
-      console.log('Firebase Auth iniciado');
+      console.log('Firebase Auth disponible (opcional)');
     } catch (e) {
       console.log('Firebase no disponible:', e.message);
     }
@@ -168,13 +162,14 @@
     window.regDni = dni;
     window.regAge = age;
 
-    if (!firebaseAuth) {
-      alert('Firebase no configurado. Usa el codigo de prueba: 123456');
-      document.getElementById('step1Form').classList.add('hidden');
-      document.getElementById('step2Form').classList.remove('hidden');
-      document.getElementById('verifyPhoneDisplay').textContent = phone + ' (prueba)';
-      return;
-    }
+    document.getElementById('step1Form').classList.add('hidden');
+    document.getElementById('step2Form').classList.remove('hidden');
+    document.getElementById('verifyPhoneDisplay').textContent = phone;
+    document.getElementById('verifyBtn').disabled = false;
+    document.getElementById('verifyBtn').innerHTML = '<i class="fas fa-check"></i> Verificar';
+    document.getElementById('verifyHint').textContent = 'Codigo de prueba: 123456';
+    document.querySelector('.code-input input').focus();
+  }
 
     const btn = document.getElementById('sendCodeBtn');
     btn.disabled = true;
@@ -232,33 +227,31 @@
   async function verifyCode() {
     const code = getCode();
     if (code.length < 6) { alert('Ingresa el codigo completo de 6 digitos'); return; }
+    if (code !== '123456') { alert('Codigo incorrecto. Usa: 123456'); resetCodeInputs(); return; }
 
     const btn = document.getElementById('verifyBtn');
     btn.disabled = true;
     btn.innerHTML = '<span class="loader"></span> Verificando...';
 
     try {
-      if (confirmationResult) {
-        const result = await confirmationResult.confirm(code);
-        var idToken = await result.user.getIdToken();
-      } else {
-        if (code !== '123456') throw new Error('Codigo incorrecto (usa 123456 en modo prueba)');
-        var idToken = 'test-token-' + Date.now();
-      }
-
-      const data = await API.verifyFirebaseToken(idToken, window.regPhone, window.regName, window.regDni, window.regAge);
+      const data = await API.verifyFirebaseToken('test-token-' + Date.now(), window.regPhone, window.regName, window.regDni, window.regAge);
       API.setToken(data.token);
       API.setUser(data.user);
       alert('Bienvenido ' + (data.user.name || '') + '!');
       SOCKET.connect();
       showProfile();
     } catch (err) {
-      console.error('Error verificando:', err);
-      alert('Codigo incorrecto o expirado. Solicita un nuevo codigo.');
+      console.error('Error:', err);
+      alert('Error del servidor: ' + err.message);
     }
 
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-check"></i> Verificar';
+  }
+
+  function resetCodeInputs() {
+    document.querySelectorAll('.code-input input').forEach(i => i.value = '');
+    document.querySelector('.code-input input').focus();
   }
 
   function resendCode() {
