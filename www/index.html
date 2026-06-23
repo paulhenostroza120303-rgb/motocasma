@@ -115,6 +115,11 @@
   function init() {
     getLocation();
     if (API.isLoggedIn()) {
+      const user = API.getUser();
+      if (user && (user.role === 'driver' || user.role === 'owner')) {
+        location.href = 'pages/driver.html';
+        return;
+      }
       SOCKET.connect();
       checkActiveRide();
     }
