@@ -137,7 +137,7 @@
 
   function initFirebase() {
     try {
-      if (!firebase || !firebase.apps.length) return;
+      if (typeof firebase === 'undefined') return;
       const cfg = CONFIG.FIREBASE;
       if (!cfg.apiKey || cfg.apiKey === 'REEMPLAZA_CON_TU_API_KEY') {
         console.log('Firebase no configurado - modo offline');
