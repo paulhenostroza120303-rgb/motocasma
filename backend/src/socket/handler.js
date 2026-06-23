@@ -1,3 +1,5 @@
+import Message from '../models/Message.js';
+
 let activeUsers = {};
 
 export function setupSocketHandlers(io) {
@@ -45,6 +47,22 @@ export function setupSocketHandlers(io) {
     socket.on('ride:cancelled', ({ rideId, userId }) => {
       io.to(`user:${userId}`).emit('ride:cancelled', { rideId });
       io.to('drivers').emit('ride:cancelled', { rideId });
+    });
+
+    socket.on('chat:send', async ({ rideId, senderId, senderRole, text }) => {
+      try {
+        const msg = await Message.create({ rideId, senderId, senderRole, text });
+        const otherRole = senderRole === 'user' ? 'driver' : 'user';
+        io.to(`user:${rideId}`).emit('chat:receive', {
+          _id: msg._id, senderId, senderRole, text, createdAt: msg.createdAt
+        });
+      } catch (err) {
+        console.error('chat:send error:', err.message);
+      }
+    });
+
+    socket.on('chat:join', ({ rideId }) => {
+      socket.join(`user:${rideId}`);
     });
 
     socket.on('disconnect', () => {

@@ -161,14 +161,19 @@
 
     let actionButtons = '';
     if (status === 'accepted') {
-      actionButtons = '<button class="btn-green" onclick="updateRideStatus(\'arrived\')"><i class="fas fa-check"></i> Llegue al lugar</button><button class="btn-red" onclick="cancelCurrentRide()"><i class="fas fa-ban"></i> Cancelar</button>';
+      actionButtons = '<button class="btn-green" onclick="updateRideStatus(\'arrived\')"><i class="fas fa-check"></i> Llegue al lugar</button><button class="btn-small" onclick="openChat()"><i class="fas fa-comment"></i> Chat</button><button class="btn-red" onclick="cancelCurrentRide()"><i class="fas fa-ban"></i> Cancelar</button>';
     } else if (status === 'arrived') {
-      actionButtons = '<button class="btn-green" onclick="updateRideStatus(\'start\')"><i class="fas fa-play"></i> Iniciar viaje</button><button class="btn-red" onclick="cancelCurrentRide()"><i class="fas fa-ban"></i> Cancelar</button>';
+      actionButtons = '<button class="btn-green" onclick="updateRideStatus(\'start\')"><i class="fas fa-play"></i> Iniciar viaje</button><button class="btn-small" onclick="openChat()"><i class="fas fa-comment"></i> Chat</button><button class="btn-red" onclick="cancelCurrentRide()"><i class="fas fa-ban"></i> Cancelar</button>';
     } else if (status === 'in_progress') {
-      actionButtons = '<button class="btn-green" onclick="updateRideStatus(\'complete\')"><i class="fas fa-flag-checkered"></i> Completar viaje</button>';
+      actionButtons = '<button class="btn-green" onclick="updateRideStatus(\'complete\')"><i class="fas fa-flag-checkered"></i> Completar viaje</button><button class="btn-small" onclick="openChat()"><i class="fas fa-comment"></i> Chat</button>';
     }
 
     section.innerHTML = '<div class="active-ride"><div class="user-name"><i class="fas fa-user"></i> ' + userName + '</div><div class="route">' + pickup + ' → ' + dest + '</div><div style="font-size:20px;font-weight:700;margin:8px 0">S/ ' + price + '.00</div><div class="actions">' + actionButtons + '</div></div>';
+  }
+
+  function openChat() {
+    if (currentRide) location.href = 'chat.html?rideId=' + currentRide._id;
+    else alert('Sin viaje activo');
   }
 
   async function updateRideStatus(status) {

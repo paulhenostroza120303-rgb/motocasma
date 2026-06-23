@@ -91,7 +91,7 @@
   </div>
   <div class="nav-bottom">
     <div class="nav-item active"><i class="fas fa-motorcycle"></i>Viaje</div>
-    <div class="nav-item"><i class="fas fa-comment"></i>Chat</div>
+    <div class="nav-item" onclick="openChat()"><i class="fas fa-comment"></i>Chat</div>
     <div class="nav-item" onclick="location.href='../index.html'"><i class="fas fa-home"></i>Inicio</div>
   </div>
 </div>
@@ -129,6 +129,7 @@
       }
       const r = data.ride;
       rideId = r._id;
+      rideId = r._id;
       document.getElementById('priceDisplay').textContent = 'S/ ' + r.price + '.00';
       if (r.driverId) {
         document.getElementById('driverName').textContent = r.driverId.name || 'Conductor';
@@ -163,6 +164,11 @@
     const cancelBtn = document.getElementById('cancelBtn');
     if (status === 'completed') cancelBtn.style.display = 'none';
     else cancelBtn.style.display = 'block';
+  }
+
+  function openChat() {
+    if (rideId) location.href = 'chat.html?rideId=' + rideId;
+    else alert('Espera a que un conductor acepte el viaje');
   }
 
   async function cancelTrip() {

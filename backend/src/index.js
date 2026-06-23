@@ -10,6 +10,7 @@ import authRoutes from './routes/auth.js';
 import rideRoutes from './routes/rides.js';
 import driverRoutes from './routes/drivers.js';
 import ownerRoutes from './routes/owner.js';
+import chatRoutes from './routes/chat.js';
 import { setupSocketHandlers } from './socket/handler.js';
 import Driver from './models/Driver.js';
 
@@ -26,6 +27,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/rides', rideRoutes);
 app.use('/api/drivers', driverRoutes);
 app.use('/api/owner', ownerRoutes);
+app.use('/api/chat', chatRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'MotoCasma API' });
