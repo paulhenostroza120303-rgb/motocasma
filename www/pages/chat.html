@@ -78,7 +78,11 @@
     const user = API.getUser();
     const senderId = user?._id || user?.id;
     const senderRole = user?.role === 'driver' || user?.role === 'owner' ? 'driver' : 'user';
-    SOCKET.emit('chat:send', { rideId, senderId, senderRole, text });
+    const msgData = { rideId, senderId, senderRole, text };
+    SOCKET.emit('chat:send', msgData);
+    try {
+      await API.request('/api/chat/send', { method: 'POST', body: JSON.stringify(msgData) });
+    } catch {}
     const container = document.getElementById('messagesContainer');
     document.getElementById('emptyChat').style.display = 'none';
     container.innerHTML += '<div class="msg user">' + text + '<div class="time">' + new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }) + '</div></div>';
@@ -87,8 +91,8 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     if (!API.isLoggedIn()) { location.href = 'profile.html'; return; }
+    if (rideId) SOCKET.pendingJoin = rideId;
     SOCKET.connect();
-    if (rideId) SOCKET.emit('chat:join', { rideId });
     SOCKET.on('chat:receive', (data) => {
       const user = API.getUser();
       const isMe = (user && data.senderId === user.id) || (user && data.senderId === user._id);
