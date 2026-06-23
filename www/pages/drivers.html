@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>MotoCasma - Conductores Cercanos</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/socket.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f3f4f6; }
+    .container { max-width: 480px; margin: 0 auto; background: #f3f4f6; min-height: 100vh; padding-bottom: 80px; }
+    .header { background: linear-gradient(135deg, #fbbf24, #f59e0b); padding: 16px; display: flex; align-items: center; gap: 12px; color: #1f2937; }
+    .header h1 { font-size: 20px; font-weight: 800; }
+    .header i { cursor: pointer; }
+    .search-box { margin: 16px; background: white; border-radius: 14px; padding: 12px 16px; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .search-box input { flex: 1; border: none; outline: none; font-size: 14px; background: transparent; }
+    .search-box i { color: #9ca3af; }
+    .driver-card { background: white; margin: 8px 16px; border-radius: 16px; padding: 16px; display: flex; align-items: center; gap: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); cursor: pointer; transition: 0.2s; }
+    .driver-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.10); }
+    .driver-avatar { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #fbbf24, #f59e0b); display: flex; align-items: center; justify-content: center; font-size: 22px; color: white; flex-shrink: 0; }
+    .driver-info { flex: 1; }
+    .driver-info .name { font-weight: 700; color: #1f2937; }
+    .driver-info .rating { font-size: 13px; color: #f59e0b; }
+    .driver-info .detail { font-size: 13px; color: #6b7280; }
+    .driver-stats { text-align: right; }
+    .driver-stats .distance { font-weight: 600; color: #1f2937; }
+    .driver-stats .eta { font-size: 13px; color: #6b7280; }
+    .section-title { font-size: 18px; font-weight: 700; color: #1f2937; margin: 16px 16px 4px; }
+    .loading { text-align: center; padding: 40px; color: #6b7280; }
+    .nav-bottom { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 8px 0 12px; border-top: 1px solid #e5e7eb; max-width: 480px; }
+    .nav-item { text-align: center; font-size: 12px; color: #9ca3af; cursor: pointer; }
+    .nav-item.active { color: #f59e0b; }
+    .nav-item i { font-size: 22px; display: block; margin-bottom: 2px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <i class="fas fa-arrow-left" onclick="history.back()"></i>
+    <h1>Conductores Cercanos</h1>
+  </div>
+  <div class="search-box"><i class="fas fa-search"></i><input type="text" placeholder="Buscar conductor..." id="searchInput" oninput="filterDrivers()" /></div>
+  <div class="section-title">Disponibles ahora <span id="countDrivers" style="font-weight:400;color:#6b7280;font-size:14px"></span></div>
+  <div id="driversList">
+    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Cargando conductores...</div>
+  </div>
+  <div class="nav-bottom">
+    <div class="nav-item" onclick="location.href='../index.html'"><i class="fas fa-home"></i>Inicio</div>
+    <div class="nav-item active"><i class="fas fa-search"></i>Buscar</div>
+    <div class="nav-item" onclick="location.href='request.html'"><i class="fas fa-plus-circle"></i>Pedir</div>
+    <div class="nav-item" onclick="location.href='history.html'"><i class="fas fa-clock"></i>Historial</div>
+    <div class="nav-item" onclick="location.href='profile.html'"><i class="fas fa-user"></i>Perfil</div>
+  </div>
+</div>
+<script>
+  let allDrivers = [];
+
+  async function loadDrivers() {
+    const lat = window.userLat || -9.4531;
+    const lng = window.userLng || -78.2989;
+    try {
+      const data = await API.getNearbyDrivers(lat, lng);
+      allDrivers = data.drivers || [];
+      renderDrivers(allDrivers);
+      document.getElementById('countDrivers').textContent = '(' + allDrivers.length + ' disponibles)';
+    } catch {
+      document.getElementById('driversList').innerHTML = '<div class="loading" style="padding:20px">Sin conexion al servidor</div>';
+    }
+  }
+
+  function renderDrivers(drivers) {
+    const container = document.getElementById('driversList');
+    if (!drivers.length) {
+      container.innerHTML = '<div class="loading">No hay conductores cerca</div>';
+      return;
+    }
+    container.innerHTML = drivers.map(d => {
+      const dist = d.location?.coordinates ? calcDistance(window.userLat || -9.4531, window.userLng || -78.2989, d.location.coordinates[1], d.location.coordinates[0]) : '--';
+      return '<div class="driver-card" onclick="selectDriver(\'' + (d.name || 'Conductor') + '\')">' +
+        '<div class="driver-avatar"><i class="fas fa-user"></i></div>' +
+        '<div class="driver-info">' +
+          '<div class="name">' + (d.name || 'Conductor') + '</div>' +
+          '<div class="rating"><i class="fas fa-star"></i> ' + (d.rating || '5.0') + '</div>' +
+          '<div class="detail">' + (d.vehiclePlate || '---') + ' - ' + (d.totalTrips || 0) + ' viajes</div>' +
+        '</div>' +
+        '<div class="driver-stats">' +
+          '<div class="distance">' + dist + ' km</div>' +
+          '<div class="eta">' + (dist !== '--' ? Math.round(dist * 4) + ' min' : '--') + '</div>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  function filterDrivers() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    const filtered = allDrivers.filter(d => (d.name || '').toLowerCase().includes(q));
+    renderDrivers(filtered);
+  }
+
+  function selectDriver(name) { alert('Has seleccionado a ' + name); }
+
+  function calcDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+    return (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))).toFixed(1);
+  }
+
+  document.addEventListener('DOMContentLoaded', loadDrivers);
+</script>
+</body>
+</html>

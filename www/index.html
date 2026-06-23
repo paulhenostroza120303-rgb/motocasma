@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>MotoCasma - Inicio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="manifest" href="manifest.json" />
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/socket.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f3f4f6; }
+    .header { background: linear-gradient(135deg, #fbbf24, #f59e0b); padding: 16px; display: flex; align-items: center; justify-content: space-between; color: #1f2937; }
+    .header h1 { font-size: 20px; font-weight: 800; }
+    .header i { font-size: 22px; }
+    .map-container { height: 320px; background: #d1d5db; position: relative; overflow: hidden; }
+    .map-container iframe { width: 100%; height: 100%; border: 0; }
+    .location-bar { background: white; margin: 12px 16px; padding: 12px 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; }
+    .location-bar i { color: #f59e0b; }
+    .location-bar span { font-size: 14px; color: #374151; }
+    .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px; }
+    .quick-btn { background: white; border-radius: 16px; padding: 20px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); cursor: pointer; transition: 0.2s; }
+    .quick-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+    .quick-btn i { font-size: 28px; color: #f59e0b; margin-bottom: 8px; }
+    .quick-btn p { font-weight: 600; color: #1f2937; font-size: 14px; }
+    .quick-btn small { color: #6b7280; font-size: 12px; }
+    .btn-primary { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1f2937; font-weight: 700; border: none; border-radius: 50px; padding: 16px 24px; font-size: 16px; width: calc(100% - 32px); margin: 8px 16px; cursor: pointer; box-shadow: 0 4px 15px rgba(251,191,36,0.4); transition: 0.2s; }
+    .btn-primary:hover { transform: scale(1.02); }
+    .nav-bottom { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 8px 0 12px; border-top: 1px solid #e5e7eb; max-width: 480px; }
+    .nav-item { text-align: center; font-size: 12px; color: #9ca3af; cursor: pointer; transition: 0.2s; }
+    .nav-item.active { color: #f59e0b; }
+    .nav-item i { font-size: 22px; display: block; margin-bottom: 2px; }
+    .container { max-width: 480px; margin: 0 auto; background: #f3f4f6; min-height: 100vh; padding-bottom: 80px; }
+    .offline-indicator { background: #ef4444; color: white; text-align: center; padding: 4px; font-size: 12px; display: none; }
+  </style>
+</head>
+<body>
+<div class="container" id="app">
+  <div class="offline-indicator" id="offlineIndicator">Sin conexión</div>
+  <div class="header">
+    <i class="fas fa-bars" onclick="toggleMenu()"></i>
+    <h1><i class="fas fa-motorcycle"></i> MotoCasma</h1>
+    <i class="fas fa-bell"></i>
+  </div>
+  <div class="map-container">
+    <iframe src="https://www.openstreetmap.org/export/embed.html?bbox=-78.3039,-9.4581,-78.2939,-9.4481&layer=mapnik" allowfullscreen loading="lazy"></iframe>
+  </div>
+  <div class="location-bar">
+    <i class="fas fa-map-pin"></i>
+    <span id="currentLocation">Obteniendo ubicación...</span>
+  </div>
+  <div class="quick-actions">
+    <div class="quick-btn" onclick="location.href='pages/request.html'">
+      <i class="fas fa-taxi"></i>
+      <p>Pedir MotoTaxi</p>
+      <small>Viaje rápido</small>
+    </div>
+    <div class="quick-btn" onclick="location.href='pages/drivers.html'">
+      <i class="fas fa-users"></i>
+      <p>Mototaxistas</p>
+      <small>Cerca de ti</small>
+    </div>
+    <div class="quick-btn" onclick="location.href='pages/history.html'">
+      <i class="fas fa-clock-rotate"></i>
+      <p>Historial</p>
+      <small>Tus viajes</small>
+    </div>
+    <div class="quick-btn" onclick="location.href='pages/profile.html'">
+      <i class="fas fa-user"></i>
+      <p>Perfil</p>
+      <small>Configuración</small>
+    </div>
+  </div>
+  <button class="btn-primary" onclick="location.href='pages/request.html'">
+    <i class="fas fa-motorcycle"></i> PEDIR MOTOTAXI
+  </button>
+  <div class="nav-bottom">
+    <div class="nav-item active" onclick="location.href='index.html'"><i class="fas fa-home"></i>Inicio</div>
+    <div class="nav-item" onclick="location.href='pages/drivers.html'"><i class="fas fa-search"></i>Buscar</div>
+    <div class="nav-item" onclick="location.href='pages/request.html'"><i class="fas fa-plus-circle"></i>Pedir</div>
+    <div class="nav-item" onclick="location.href='pages/history.html'"><i class="fas fa-clock"></i>Historial</div>
+    <div class="nav-item" onclick="location.href='pages/profile.html'"><i class="fas fa-user"></i>Perfil</div>
+  </div>
+</div>
+<script>
+  function toggleMenu() { alert('Men� pr�ximo'); }
+
+  function getLocation() {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        p => {
+          document.getElementById('currentLocation').textContent = `Lat: ${p.coords.latitude.toFixed(4)}, Lng: ${p.coords.longitude.toFixed(4)}`;
+          window.userLat = p.coords.latitude;
+          window.userLng = p.coords.longitude;
+        },
+        () => { document.getElementById('currentLocation').textContent = 'Casma, Per�'; }
+      );
+    }
+  }
+
+  async function checkActiveRide() {
+    if (!API.isLoggedIn()) return;
+    try {
+      const data = await API.getActiveRide();
+      if (data.ride) {
+        location.href = 'pages/trip.html?id=' + data.ride._id;
+      }
+    } catch {}
+  }
+
+  function init() {
+    getLocation();
+    if (API.isLoggedIn()) {
+      SOCKET.connect();
+      checkActiveRide();
+    }
+  }
+
+  init();
+  window.addEventListener('offline', () => { document.getElementById('offlineIndicator').style.display = 'block'; });
+  window.addEventListener('online', () => { document.getElementById('offlineIndicator').style.display = 'none'; });
+</script>
+</body>
+</html>

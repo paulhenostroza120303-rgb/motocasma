@@ -1,0 +1,15 @@
+{
+  "appId": "com.motocasma.app",
+  "appName": "MotoCasma",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#fbbf24"
+    }
+  }
+}

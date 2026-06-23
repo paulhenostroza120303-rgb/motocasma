@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>MotoCasma - Historial</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/socket.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f3f4f6; }
+    .container { max-width: 480px; margin: 0 auto; background: #f3f4f6; min-height: 100vh; padding-bottom: 80px; }
+    .header { background: linear-gradient(135deg, #fbbf24, #f59e0b); padding: 16px; display: flex; align-items: center; gap: 12px; color: #1f2937; }
+    .header h1 { font-size: 20px; font-weight: 800; }
+    .header i { cursor: pointer; }
+    .filter-tabs { display: flex; gap: 8px; margin: 16px; overflow-x: auto; }
+    .filter-tab { background: white; padding: 8px 20px; border-radius: 50px; font-size: 13px; font-weight: 500; color: #6b7280; border: 1px solid #e5e7eb; white-space: nowrap; cursor: pointer; transition: 0.2s; }
+    .filter-tab.active { background: #fbbf24; color: #1f2937; border-color: #fbbf24; font-weight: 700; }
+    .trip-item { background: white; margin: 8px 16px; border-radius: 16px; padding: 14px; display: flex; align-items: center; gap: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .trip-icon { width: 44px; height: 44px; border-radius: 12px; background: #fffbeb; display: flex; align-items: center; justify-content: center; color: #f59e0b; font-size: 20px; flex-shrink: 0; }
+    .trip-info { flex: 1; }
+    .trip-info .route { font-weight: 600; color: #1f2937; font-size: 15px; }
+    .trip-info .date { font-size: 12px; color: #9ca3af; }
+    .trip-info .driver-name { font-size: 13px; color: #6b7280; }
+    .trip-price { text-align: right; }
+    .trip-price .amount { font-weight: 700; color: #059669; }
+    .trip-price .rating { font-size: 13px; color: #f59e0b; }
+    .loading { text-align: center; padding: 40px; color: #6b7280; }
+    .empty { text-align: center; padding: 40px; color: #9ca3af; }
+    .empty i { font-size: 48px; margin-bottom: 12px; display: block; }
+    .nav-bottom { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 8px 0 12px; border-top: 1px solid #e5e7eb; max-width: 480px; }
+    .nav-item { text-align: center; font-size: 12px; color: #9ca3af; cursor: pointer; }
+    .nav-item.active { color: #f59e0b; }
+    .nav-item i { font-size: 22px; display: block; margin-bottom: 2px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <i class="fas fa-arrow-left" onclick="history.back()"></i>
+    <h1>Historial</h1>
+  </div>
+  <div class="filter-tabs">
+    <span class="filter-tab active" onclick="filterHistory('today')">Hoy</span>
+    <span class="filter-tab" onclick="filterHistory('week')">Esta semana</span>
+    <span class="filter-tab" onclick="filterHistory('month')">Este mes</span>
+    <span class="filter-tab" onclick="filterHistory('all')">Todos</span>
+  </div>
+  <div id="historyList">
+    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Cargando historial...</div>
+  </div>
+  <div class="nav-bottom">
+    <div class="nav-item" onclick="location.href='../index.html'"><i class="fas fa-home"></i>Inicio</div>
+    <div class="nav-item" onclick="location.href='drivers.html'"><i class="fas fa-search"></i>Buscar</div>
+    <div class="nav-item" onclick="location.href='request.html'"><i class="fas fa-plus-circle"></i>Pedir</div>
+    <div class="nav-item active"><i class="fas fa-clock"></i>Historial</div>
+    <div class="nav-item" onclick="location.href='profile.html'"><i class="fas fa-user"></i>Perfil</div>
+  </div>
+</div>
+<script>
+  let allRides = [];
+
+  async function loadHistory() {
+    if (!API.isLoggedIn()) {
+      document.getElementById('historyList').innerHTML = '<div class="empty"><i class="fas fa-user-lock"></i>Inicia sesion para ver tu historial</div>';
+      return;
+    }
+    try {
+      const data = await API.getHistory();
+      allRides = data.rides || [];
+      renderRides(allRides);
+    } catch {
+      document.getElementById('historyList').innerHTML = '<div class="empty"><i class="fas fa-exclamation-triangle"></i>Error al cargar historial</div>';
+    }
+  }
+
+  function renderRides(rides) {
+    const container = document.getElementById('historyList');
+    if (!rides.length) {
+      container.innerHTML = '<div class="empty"><i class="fas fa-inbox"></i>No hay viajes aun</div>';
+      return;
+    }
+    container.innerHTML = rides.map(r => {
+      const route = (r.pickup?.address || 'Origen') + ' → ' + (r.destination?.address || 'Destino');
+      const date = new Date(r.createdAt).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      const driverName = r.driverId?.name || '---';
+      const rating = r.rating || '--';
+      return '<div class="trip-item">' +
+        '<div class="trip-icon"><i class="fas fa-motorcycle"></i></div>' +
+        '<div class="trip-info">' +
+          '<div class="route">' + route + '</div>' +
+          '<div class="date">' + date + '</div>' +
+          '<div class="driver-name">' + driverName + '</div>' +
+        '</div>' +
+        '<div class="trip-price">' +
+          '<div class="amount">S/ ' + (r.price || 0) + '.00</div>' +
+          '<div class="rating"><i class="fas fa-star"></i> ' + rating + '</div>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  function filterHistory(period) {
+    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    if (!allRides.length) return;
+    const now = new Date();
+    const filtered = allRides.filter(r => {
+      const d = new Date(r.createdAt);
+      if (period === 'today') return d.toDateString() === now.toDateString();
+      if (period === 'week') {
+        const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate() - 7);
+        return d >= weekAgo;
+      }
+      if (period === 'month') {
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      }
+      return true;
+    });
+    renderRides(filtered);
+  }
+
+  document.addEventListener('DOMContentLoaded', loadHistory);
+</script>
+</body>
+</html>

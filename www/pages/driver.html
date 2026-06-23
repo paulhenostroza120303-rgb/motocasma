@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>MotoCasma - Conductor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/socket.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f3f4f6; }
+    .container { max-width: 480px; margin: 0 auto; background: #f3f4f6; min-height: 100vh; padding-bottom: 80px; }
+    .header { background: linear-gradient(135deg, #fbbf24, #f59e0b); padding: 16px; display: flex; align-items: center; justify-content: space-between; color: #1f2937; }
+    .header h1 { font-size: 20px; font-weight: 800; }
+    .earnings-card { background: linear-gradient(135deg, #1f2937, #374151); margin: 16px; border-radius: 20px; padding: 20px; color: white; }
+    .earnings-card .amount { font-size: 36px; font-weight: 800; }
+    .earnings-card .label { font-size: 14px; color: #9ca3af; }
+    .earnings-row { display: flex; justify-content: space-between; margin-top: 16px; }
+    .earnings-row div { text-align: center; }
+    .earnings-row .num { font-size: 20px; font-weight: 700; }
+    .earnings-row .lbl { font-size: 12px; color: #9ca3af; }
+    .toggle-card { background: white; margin: 16px; border-radius: 16px; padding: 16px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .toggle-card span { font-weight: 600; color: #1f2937; }
+    .toggle { width: 50px; height: 28px; background: #d1d5db; border-radius: 50px; position: relative; cursor: pointer; transition: 0.3s; }
+    .toggle.active { background: #10b981; }
+    .toggle::after { content: ''; position: absolute; width: 24px; height: 24px; background: white; border-radius: 50%; top: 2px; left: 2px; transition: 0.3s; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+    .toggle.active::after { left: 24px; }
+    .section-title { font-size: 18px; font-weight: 700; color: #1f2937; margin: 16px 16px 8px; }
+    .request-item { background: white; margin: 8px 16px; padding: 16px; border-radius: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); display: flex; align-items: center; gap: 12px; }
+    .request-item .info { flex: 1; }
+    .request-item .name { font-weight: 600; }
+    .request-item .detail { font-size: 13px; color: #6b7280; }
+    .btn-small { background: #fbbf24; border: none; padding: 8px 16px; border-radius: 50px; font-weight: 600; font-size: 13px; cursor: pointer; }
+    .nav-bottom { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 8px 0 12px; border-top: 1px solid #e5e7eb; max-width: 480px; }
+    .nav-item { text-align: center; font-size: 12px; color: #9ca3af; cursor: pointer; }
+    .nav-item.active { color: #f59e0b; }
+    .nav-item i { font-size: 22px; display: block; margin-bottom: 2px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <i class="fas fa-arrow-left" onclick="history.back()"></i>
+    <h1><i class="fas fa-motorcycle"></i> Conductor</h1>
+    <i class="fas fa-sliders"></i>
+  </div>
+  <div class="earnings-card">
+    <div class="label">Ganancias de hoy</div>
+    <div class="amount" id="earningsAmount">S/ 0.00</div>
+    <div class="earnings-row">
+      <div><div class="num" id="tripsCount">0</div><div class="lbl">Viajes</div></div>
+      <div><div class="num" id="driverRating">5.0</div><div class="lbl">Estrella</div></div>
+      <div><div class="num" id="onlineTime">--</div><div class="lbl">Tiempo</div></div>
+    </div>
+  </div>
+  <div class="toggle-card">
+    <span><i class="fas fa-power-off" style="color:#10b981"></i> Disponible</span>
+    <div class="toggle" id="toggleBtn" onclick="toggleAvailability(this)"></div>
+  </div>
+  <div class="section-title">Solicitudes en vivo</div>
+  <div id="requestsContainer">
+    <p style="text-align:center;color:#9ca3af;padding:20px;font-size:14px">Esperando solicitudes...</p>
+  </div>
+  <div class="nav-bottom">
+    <div class="nav-item" onclick="location.href='../index.html'"><i class="fas fa-home"></i>Inicio</div>
+    <div class="nav-item active"><i class="fas fa-motorcycle"></i>Conducir</div>
+    <div class="nav-item"><i class="fas fa-chart-line"></i>Ganancias</div>
+    <div class="nav-item" onclick="location.href='history.html'"><i class="fas fa-clock"></i>Historial</div>
+    <div class="nav-item" onclick="location.href='profile.html'"><i class="fas fa-user"></i>Perfil</div>
+  </div>
+</div>
+<script>
+  async function toggleAvailability(el) {
+    el.classList.toggle('active');
+    const available = el.classList.contains('active');
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      try {
+        await API.request('/api/drivers/availability', {
+          method: 'PUT', body: JSON.stringify({ available })
+        });
+      } catch {}
+      if (available) SOCKET.connect();
+    });
+  }
+
+  SOCKET.on('ride:new', (data) => {
+    const container = document.getElementById('requestsContainer');
+    const item = document.createElement('div');
+    item.className = 'request-item';
+    item.innerHTML = '<div class="info"><div class="name">Nuevo viaje</div><div class="detail">' + (data.pickup?.address || 'Casma') + ' → ' + (data.destination?.address || 'Destino') + '</div><div class="detail" style="color:#f59e0b">S/ ' + (data.price || 8) + '.00</div></div><button class="btn-small" onclick="acceptRide(\'' + (data.rideId || '') + '\')">Aceptar</button>';
+    container.prepend(item);
+  });
+
+  function acceptRide(rideId) {
+    alert('Viaje aceptado! (ID: ' + rideId + ')');
+    SOCKET.emit('ride:accept', { rideId, driverId: 'current' });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    SOCKET.connect();
+  });
+</script>
+</body>
+</html>

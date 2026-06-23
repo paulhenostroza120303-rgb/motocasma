@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>MotoCasma - En Viaje</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/socket.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f3f4f6; }
+    .container { max-width: 480px; margin: 0 auto; background: #f3f4f6; min-height: 100vh; padding-bottom: 80px; }
+    .header { background: linear-gradient(135deg, #fbbf24, #f59e0b); padding: 16px; display: flex; align-items: center; justify-content: space-between; color: #1f2937; }
+    .header h1 { font-size: 18px; font-weight: 800; }
+    .map-container { height: 220px; background: #d1d5db; position: relative; overflow: hidden; }
+    .map-container iframe { width: 100%; height: 100%; border: 0; }
+    .trip-status { background: white; margin: -20px 16px 0; border-radius: 20px; padding: 20px; box-shadow: 0 -4px 20px rgba(0,0,0,0.10); position: relative; z-index: 2; }
+    .driver-info { display: flex; align-items: center; gap: 14px; }
+    .driver-avatar { width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #fbbf24, #f59e0b); display: flex; align-items: center; justify-content: center; font-size: 24px; color: white; }
+    .driver-details { flex: 1; }
+    .driver-details .name { font-weight: 700; font-size: 18px; }
+    .driver-details .rating { color: #f59e0b; font-size: 14px; }
+    .driver-details .plate { font-size: 13px; color: #6b7280; font-family: monospace; }
+    .trip-progress { margin-top: 16px; }
+    .progress-dot { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .progress-dot .dot { width: 10px; height: 10px; border-radius: 50%; background: #d1d5db; flex-shrink: 0; }
+    .progress-dot .dot.active { background: #fbbf24; box-shadow: 0 0 0 4px rgba(251,191,36,0.2); }
+    .progress-dot .dot.arrived { background: #10b981; }
+    .progress-dot .label { font-size: 14px; color: #6b7280; }
+    .progress-dot .label.active { color: #1f2937; font-weight: 600; }
+    .eta-card { background: #1f2937; margin: 16px; border-radius: 16px; padding: 16px; display: flex; align-items: center; justify-content: space-between; color: white; }
+    .eta-card .time { font-size: 32px; font-weight: 800; }
+    .eta-card .sub { font-size: 13px; color: #9ca3af; }
+    .action-buttons { display: flex; gap: 12px; margin: 16px; }
+    .action-btn { flex: 1; padding: 14px; border-radius: 14px; border: none; font-weight: 600; cursor: pointer; font-size: 14px; }
+    .action-btn.call { background: #10b981; color: white; }
+    .action-btn.cancel { background: #fee2e2; color: #ef4444; }
+    .nav-bottom { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 8px 0 12px; border-top: 1px solid #e5e7eb; max-width: 480px; }
+    .nav-item { text-align: center; font-size: 12px; color: #9ca3af; cursor: pointer; }
+    .nav-item.active { color: #f59e0b; }
+    .nav-item i { font-size: 22px; display: block; margin-bottom: 2px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="fas fa-motorcycle"></i> <span id="statusText">En Viaje</span></h1>
+    <span id="priceDisplay" style="font-size:14px;font-weight:600">S/ 8.00</span>
+  </div>
+  <div class="map-container">
+    <iframe id="mapFrame" src="https://www.openstreetmap.org/export/embed.html?bbox=-78.3039,-9.4581,-78.2939,-9.4481&layer=mapnik" allowfullscreen loading="lazy"></iframe>
+  </div>
+  <div class="trip-status">
+    <div class="driver-info">
+      <div class="driver-avatar"><i class="fas fa-user"></i></div>
+      <div class="driver-details">
+        <div class="name" id="driverName">Buscando conductor...</div>
+        <div class="rating" id="driverRating"><i class="fas fa-star"></i> --</div>
+        <div class="plate" id="driverPlate">---</div>
+      </div>
+    </div>
+    <div class="trip-progress">
+      <div class="progress-dot"><div class="dot active" id="dotSearching"></div><span class="label active" id="labelSearching">Buscando conductor</span></div>
+      <div class="progress-dot"><div class="dot" id="dotAccepted"></div><span class="label" id="labelAccepted">Conductor acepto</span></div>
+      <div class="progress-dot"><div class="dot" id="dotArrived"></div><span class="label" id="labelArrived">Conductor llego</span></div>
+      <div class="progress-dot"><div class="dot" id="dotComplete"></div><span class="label" id="labelComplete">Viaje completado</span></div>
+    </div>
+  </div>
+  <div class="eta-card">
+    <div><div class="time" id="etaTime">--</div><div class="sub">Tiempo estimado</div></div>
+    <div style="text-align:right"><div style="font-size:18px;font-weight:700" id="etaDistance">--</div><div class="sub">Distancia</div></div>
+  </div>
+  <div class="action-buttons">
+    <button class="action-btn call"><i class="fas fa-phone"></i> Llamar</button>
+    <button class="action-btn cancel" onclick="cancelTrip()"><i class="fas fa-ban"></i> Cancelar</button>
+  </div>
+  <div class="nav-bottom">
+    <div class="nav-item active"><i class="fas fa-motorcycle"></i>Viaje</div>
+    <div class="nav-item"><i class="fas fa-comment"></i>Chat</div>
+    <div class="nav-item" onclick="location.href='../index.html'"><i class="fas fa-home"></i>Inicio</div>
+  </div>
+</div>
+<script>
+  async function loadRide() {
+    if (!API.isLoggedIn()) { location.href = 'profile.html'; return; }
+    try {
+      const data = await API.getActiveRide();
+      if (!data.ride) { location.href = '../index.html'; return; }
+      const r = data.ride;
+      document.getElementById('priceDisplay').textContent = 'S/ ' + r.price + '.00';
+      if (r.driverId) {
+        document.getElementById('driverName').textContent = r.driverId.name || 'Conductor';
+        document.getElementById('driverRating').innerHTML = '<i class="fas fa-star"></i> ' + (r.driverId.rating || '--');
+        document.getElementById('driverPlate').textContent = r.driverId.vehiclePlate || '---';
+      }
+      updateProgress(r.status);
+    } catch { location.href = '../index.html'; }
+  }
+
+  function updateProgress(status) {
+    const dots = ['dotSearching','dotAccepted','dotArrived','dotComplete'];
+    const labels = ['labelSearching','labelAccepted','labelArrived','labelComplete'];
+    const statuses = ['searching','accepted','arrived','completed'];
+    const idx = statuses.indexOf(status);
+    dots.forEach((id, i) => {
+      document.getElementById(id).className = 'dot' + (i <= idx ? (status === 'arrived' && i === 2 ? ' arrived' : ' active') : '');
+      document.getElementById(labels[i]).className = 'label' + (i <= idx ? ' active' : '');
+    });
+    document.getElementById('statusText').textContent =
+      status === 'searching' ? 'Buscando...' :
+      status === 'accepted' ? 'Conductor en camino' :
+      status === 'arrived' ? 'Conductor llego' :
+      status === 'in_progress' ? 'En viaje' : 'Completado';
+  }
+
+  async function cancelTrip() {
+    if (!confirm('Cancelar viaje?')) return;
+    try {
+      const data = await API.getActiveRide();
+      if (data.ride) await API.cancelRide(data.ride._id);
+      alert('Viaje cancelado');
+      location.href = '../index.html';
+    } catch { location.href = '../index.html'; }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    SOCKET.connect();
+    SOCKET.on('ride:accepted', (data) => {
+      document.getElementById('driverName').textContent = data.driverName;
+      updateProgress('accepted');
+    });
+    SOCKET.on('ride:status', (data) => {
+      updateProgress(data.status);
+    });
+    loadRide();
+  });
+</script>
+</body>
+</html>
