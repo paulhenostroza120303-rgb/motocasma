@@ -213,12 +213,15 @@
         SOCKET.emit('ride:complete', { rideId: currentRide._id, userId });
         currentRide = null;
         document.getElementById('activeRideSection').style.display = 'none';
+        document.getElementById('activeRideSection').innerHTML = '';
         alert('Viaje completado!');
         return;
       }
-      currentRide = null;
-      document.getElementById('activeRideSection').style.display = 'none';
-      alert('Estado actualizado');
+      const updated = await API.getDriverActiveRide();
+      if (updated.ride) {
+        currentRide = updated.ride;
+        showActiveRide(updated.ride);
+      }
     } catch (err) { alert('Error: ' + err.message); }
   }
 

@@ -23,7 +23,7 @@ const SOCKET = {
   },
 
   emit(event, data) {
-    if (this.socket?.connected) this.socket.emit(event, data);
+    if (this.socket) this.socket.emit(event, data);
   },
 
   disconnect() {

@@ -77,7 +77,7 @@
     input.value = '';
     const user = API.getUser();
     const senderId = user?._id || user?.id;
-    const senderRole = 'user';
+    const senderRole = user?.role === 'driver' || user?.role === 'owner' ? 'driver' : 'user';
     SOCKET.emit('chat:send', { rideId, senderId, senderRole, text });
     const container = document.getElementById('messagesContainer');
     document.getElementById('emptyChat').style.display = 'none';

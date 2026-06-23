@@ -233,7 +233,7 @@
       alert('Viaje cancelado por el conductor');
       location.href = '../index.html';
     });
-    SOCKET.on('ride:driver_location', (data) => {
+    SOCKET.on('ride:location', (data) => {
       if (data.lat && data.lng) {
         document.getElementById('mapFrame').src = 'https://www.openstreetmap.org/export/embed.html?bbox=' + (data.lng - 0.008) + ',' + (data.lat - 0.008) + ',' + (data.lng + 0.008) + ',' + (data.lat + 0.008) + '&layer=mapnik&marker=' + data.lat + ',' + data.lng;
         document.getElementById('etaTime').textContent = '5 min';
