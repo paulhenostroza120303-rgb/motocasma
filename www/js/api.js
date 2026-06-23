@@ -30,6 +30,13 @@ const API = {
     return this.request('/api/auth/send-code', { method: 'POST', body: JSON.stringify({ phone }) });
   },
 
+  verifyFirebaseToken(firebaseToken, phone, name, dni, age) {
+    return this.request('/api/auth/firebase-verify', {
+      method: 'POST',
+      body: JSON.stringify({ firebaseToken, phone, name, dni, age })
+    });
+  },
+
   verifyCode(phone, name) {
     return this.request('/api/auth/verify-code', { method: 'POST', body: JSON.stringify({ phone, name }) });
   },

@@ -6,6 +6,8 @@
   <title>MotoCasma - Perfil</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-auth-compat.js"></script>
   <script src="../js/config.js"></script>
   <script src="../js/api.js"></script>
   <script src="../js/socket.js"></script>
@@ -21,6 +23,7 @@
     .profile-avatar { width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #fbbf24, #f59e0b); display: flex; align-items: center; justify-content: center; font-size: 36px; color: white; margin: 0 auto 12px; }
     .profile-card .name { font-size: 20px; font-weight: 700; }
     .profile-card .phone { font-size: 14px; color: #6b7280; }
+    .profile-card .dni-age { font-size: 13px; color: #9ca3af; margin-top: 4px; }
     .menu-group { background: white; margin: 16px; border-radius: 18px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
     .menu-item { display: flex; align-items: center; gap: 14px; padding: 16px; border-bottom: 1px solid #f3f4f6; cursor: pointer; transition: 0.2s; }
     .menu-item:last-child { border-bottom: none; }
@@ -28,13 +31,30 @@
     .menu-item span { flex: 1; font-weight: 500; color: #1f2937; }
     .menu-item .arrow { color: #d1d5db; }
     .menu-item:hover { background: #f9fafb; }
-    .login-form { background: white; margin: 16px; border-radius: 20px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .login-form h3 { font-size: 18px; font-weight: 700; margin-bottom: 16px; text-align: center; }
-    .login-form input { width: 100%; padding: 12px 16px; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 12px; font-size: 16px; outline: none; }
-    .login-form input:focus { border-color: #fbbf24; }
-    .login-form .btn-login { width: 100%; padding: 14px; background: linear-gradient(135deg, #fbbf24, #f59e0b); border: none; border-radius: 50px; font-weight: 700; font-size: 16px; cursor: pointer; }
+    .form-card { background: white; margin: 16px; border-radius: 20px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .form-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 16px; text-align: center; }
+    .form-card .sub { font-size: 13px; color: #6b7280; text-align: center; margin-bottom: 16px; }
+    .form-card label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 4px; }
+    .form-card input { width: 100%; padding: 12px 16px; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 14px; font-size: 16px; outline: none; transition: 0.2s; }
+    .form-card input:focus { border-color: #fbbf24; box-shadow: 0 0 0 3px rgba(251,191,36,0.15); }
+    .form-card .row { display: flex; gap: 12px; }
+    .form-card .row > * { flex: 1; }
+    .btn-primary { width: 100%; padding: 14px; background: linear-gradient(135deg, #fbbf24, #f59e0b); border: none; border-radius: 50px; font-weight: 700; font-size: 16px; cursor: pointer; transition: 0.2s; }
+    .btn-primary:hover { transform: scale(1.02); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-secondary { width: 100%; padding: 14px; background: white; border: 2px solid #fbbf24; border-radius: 50px; font-weight: 700; font-size: 16px; cursor: pointer; color: #1f2937; margin-top: 8px; }
+    .code-input { display: flex; gap: 8px; justify-content: center; margin: 16px 0; }
+    .code-input input { width: 48px; height: 56px; text-align: center; font-size: 24px; font-weight: 700; border: 2px solid #d1d5db; border-radius: 12px; outline: none; }
+    .code-input input:focus { border-color: #fbbf24; }
     .logout-btn { background: white; margin: 16px; border-radius: 14px; padding: 16px; border: none; width: calc(100% - 32px); font-weight: 600; color: #ef4444; font-size: 16px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
     .hidden { display: none; }
+    .recaptcha-wrap { display: flex; justify-content: center; margin: 12px 0; }
+    .loader { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 8px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .step-indicator { display: flex; justify-content: center; gap: 8px; margin-bottom: 16px; }
+    .step-dot { width: 10px; height: 10px; border-radius: 50%; background: #d1d5db; }
+    .step-dot.active { background: #fbbf24; }
+    .step-dot.done { background: #10b981; }
     .nav-bottom { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 8px 0 12px; border-top: 1px solid #e5e7eb; max-width: 480px; }
     .nav-item { text-align: center; font-size: 12px; color: #9ca3af; cursor: pointer; }
     .nav-item.active { color: #f59e0b; }
@@ -47,11 +67,13 @@
     <i class="fas fa-arrow-left" onclick="history.back()"></i>
     <h1>Mi Perfil</h1>
   </div>
+
   <div id="profileSection" class="hidden">
     <div class="profile-card">
       <div class="profile-avatar"><i class="fas fa-user"></i></div>
       <div class="name" id="profileName">---</div>
       <div class="phone" id="profilePhone">---</div>
+      <div class="dni-age" id="profileDniAge"></div>
     </div>
     <div class="menu-group">
       <div class="menu-item"><i class="fas fa-user-pen"></i><span>Editar perfil</span><i class="fas fa-chevron-right arrow"></i></div>
@@ -62,15 +84,43 @@
     </div>
     <button class="logout-btn" onclick="logout()"><i class="fas fa-right-from-bracket"></i> Cerrar sesion</button>
   </div>
+
   <div id="loginSection">
-    <div class="login-form">
-      <h3><i class="fas fa-phone"></i> Iniciar Sesion</h3>
+    <div class="form-card" id="step1Form">
+      <div class="step-indicator"><div class="step-dot active"></div><div class="step-dot"></div></div>
+      <h3><i class="fas fa-phone"></i> Crear cuenta</h3>
+      <div class="sub">Ingresa tus datos para registrarte</div>
+      <label>Numero de telefono</label>
       <input type="tel" id="phoneInput" placeholder="+51 999 888 777" value="+51" />
-      <input type="text" id="nameInput" placeholder="Tu nombre" />
-      <button class="btn-login" onclick="login()"><i class="fas fa-arrow-right"></i> Ingresar</button>
-      <p style="text-align:center;font-size:12px;color:#9ca3af;margin-top:8px">Registro con numero de telefono</p>
+      <label>Nombre completo</label>
+      <input type="text" id="nameInput" placeholder="Ej: Juan Perez" />
+      <div class="row">
+        <div><label>DNI</label><input type="text" id="dniInput" placeholder="12345678" maxlength="8" /></div>
+        <div><label>Edad</label><input type="number" id="ageInput" placeholder="25" min="1" max="120" /></div>
+      </div>
+      <div id="recaptchaContainer" class="recaptcha-wrap"></div>
+      <button class="btn-primary" id="sendCodeBtn" onclick="sendCode()"><i class="fas fa-envelope"></i> Enviar codigo SMS</button>
+      <p style="text-align:center;font-size:12px;color:#9ca3af;margin-top:10px">Te enviaremos un codigo SMS de verificacion</p>
+    </div>
+
+    <div class="form-card hidden" id="step2Form">
+      <div class="step-indicator"><div class="step-dot done"></div><div class="step-dot active"></div></div>
+      <h3><i class="fas fa-shield"></i> Verificar codigo</h3>
+      <div class="sub">Ingresa el codigo de 6 digitos enviado a <strong id="verifyPhoneDisplay">+51 ...</strong></div>
+      <div class="code-input">
+        <input type="text" maxlength="1" oninput="moveNext(this, 0)" onkeydown="moveBack(this, event)" />
+        <input type="text" maxlength="1" oninput="moveNext(this, 1)" onkeydown="moveBack(this, event)" />
+        <input type="text" maxlength="1" oninput="moveNext(this, 2)" onkeydown="moveBack(this, event)" />
+        <input type="text" maxlength="1" oninput="moveNext(this, 3)" onkeydown="moveBack(this, event)" />
+        <input type="text" maxlength="1" oninput="moveNext(this, 4)" onkeydown="moveBack(this, event)" />
+        <input type="text" maxlength="1" oninput="moveNext(this, 5)" onkeydown="moveBack(this, event)" />
+      </div>
+      <button class="btn-primary" id="verifyBtn" onclick="verifyCode()"><i class="fas fa-check"></i> Verificar</button>
+      <button class="btn-secondary" onclick="resetForm()"><i class="fas fa-arrow-left"></i> Volver</button>
+      <p style="text-align:center;font-size:12px;color:#9ca3af;margin-top:10px" id="resendText">¿No recibiste el codigo? <a href="#" onclick="resendCode()" style="color:#f59e0b;font-weight:600">Reenviar</a></p>
     </div>
   </div>
+
   <div class="nav-bottom">
     <div class="nav-item" onclick="location.href='../index.html'"><i class="fas fa-home"></i>Inicio</div>
     <div class="nav-item" onclick="location.href='drivers.html'"><i class="fas fa-search"></i>Buscar</div>
@@ -79,7 +129,149 @@
     <div class="nav-item active"><i class="fas fa-user"></i>Perfil</div>
   </div>
 </div>
+
 <script>
+  let firebaseAuth = null;
+  let confirmationResult = null;
+  let recaptchaVerifier = null;
+
+  function initFirebase() {
+    try {
+      if (!firebase || !firebase.apps.length) return;
+      const cfg = CONFIG.FIREBASE;
+      if (!cfg.apiKey || cfg.apiKey === 'REEMPLAZA_CON_TU_API_KEY') {
+        console.log('Firebase no configurado - modo offline');
+        return;
+      }
+      firebase.initializeApp(cfg);
+      firebaseAuth = firebase.auth();
+      firebaseAuth.useDeviceLanguage();
+      console.log('Firebase Auth iniciado');
+    } catch (e) {
+      console.log('Firebase no disponible:', e.message);
+    }
+  }
+
+  async function sendCode() {
+    const phone = document.getElementById('phoneInput').value.trim();
+    const name = document.getElementById('nameInput').value.trim();
+    const dni = document.getElementById('dniInput').value.trim();
+    const age = parseInt(document.getElementById('ageInput').value) || 0;
+
+    if (!phone || phone.length < 8) { alert('Ingresa un numero valido'); return; }
+    if (!name) { alert('Ingresa tu nombre'); return; }
+    if (!dni || dni.length < 8) { alert('Ingresa tu DNI (8 digitos)'); return; }
+    if (!age || age < 1) { alert('Ingresa tu edad'); return; }
+
+    window.regPhone = phone;
+    window.regName = name;
+    window.regDni = dni;
+    window.regAge = age;
+
+    if (!firebaseAuth) {
+      alert('Firebase no configurado. Usa el codigo de prueba: 123456');
+      document.getElementById('step1Form').classList.add('hidden');
+      document.getElementById('step2Form').classList.remove('hidden');
+      document.getElementById('verifyPhoneDisplay').textContent = phone + ' (prueba)';
+      return;
+    }
+
+    const btn = document.getElementById('sendCodeBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loader"></span> Enviando...';
+
+    try {
+      recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptchaContainer', {
+        size: window.innerWidth < 400 ? 'compact' : 'normal',
+        callback: () => {}
+      });
+      await recaptchaVerifier.render();
+
+      window.regPhone = phone;
+      window.regName = name;
+      window.regDni = dni;
+      window.regAge = age;
+
+      confirmationResult = await firebaseAuth.signInWithPhoneNumber(phone, recaptchaVerifier);
+      document.getElementById('step1Form').classList.add('hidden');
+      document.getElementById('step2Form').classList.remove('hidden');
+      document.getElementById('verifyPhoneDisplay').textContent = phone;
+      document.getElementById('verifyBtn').disabled = false;
+      document.getElementById('verifyBtn').innerHTML = '<i class="fas fa-check"></i> Verificar';
+      document.querySelector('#codeInputs input').focus();
+    } catch (err) {
+      console.error('Error SMS:', err);
+      alert('Error al enviar SMS: ' + (err.message || 'Verifica el numero'));
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-envelope"></i> Enviar codigo SMS';
+  }
+
+  function moveNext(input, idx) {
+    if (input.value && idx < 5) {
+      const next = input.parentElement.children[idx + 1];
+      if (next) next.focus();
+    }
+    if (idx === 5 && input.value) verifyCode();
+  }
+
+  function moveBack(input, event) {
+    if (event.key === 'Backspace' && !input.value) {
+      const inputs = input.parentElement.children;
+      const idx = Array.from(inputs).indexOf(input);
+      if (idx > 0) inputs[idx - 1].focus();
+    }
+  }
+
+  function getCode() {
+    const inputs = document.querySelectorAll('.code-input input');
+    return Array.from(inputs).map(i => i.value).join('');
+  }
+
+  async function verifyCode() {
+    const code = getCode();
+    if (code.length < 6) { alert('Ingresa el codigo completo de 6 digitos'); return; }
+
+    const btn = document.getElementById('verifyBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loader"></span> Verificando...';
+
+    try {
+      if (confirmationResult) {
+        const result = await confirmationResult.confirm(code);
+        var idToken = await result.user.getIdToken();
+      } else {
+        if (code !== '123456') throw new Error('Codigo incorrecto (usa 123456 en modo prueba)');
+        var idToken = 'test-token-' + Date.now();
+      }
+
+      const data = await API.verifyFirebaseToken(idToken, window.regPhone, window.regName, window.regDni, window.regAge);
+      API.setToken(data.token);
+      API.setUser(data.user);
+      alert('Bienvenido ' + (data.user.name || '') + '!');
+      SOCKET.connect();
+      showProfile();
+    } catch (err) {
+      console.error('Error verificando:', err);
+      alert('Codigo incorrecto o expirado. Solicita un nuevo codigo.');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-check"></i> Verificar';
+  }
+
+  function resendCode() {
+    document.getElementById('resendText').innerHTML = 'Reenviando...';
+    sendCode();
+  }
+
+  function resetForm() {
+    document.getElementById('step2Form').classList.add('hidden');
+    document.getElementById('step1Form').classList.remove('hidden');
+    document.querySelectorAll('.code-input input').forEach(i => i.value = '');
+  }
+
   function showProfile() {
     const user = API.getUser();
     if (user) {
@@ -87,27 +279,13 @@
       document.getElementById('profileSection').classList.remove('hidden');
       document.getElementById('profileName').textContent = user.name || 'Usuario';
       document.getElementById('profilePhone').textContent = user.phone || '---';
+      const dni = user.dni ? 'DNI: ' + user.dni : '';
+      const age = user.age ? ' | Edad: ' + user.age : '';
+      document.getElementById('profileDniAge').textContent = dni + age;
       if (API.isOwner()) document.getElementById('adminMenuItem').style.display = 'flex';
     } else {
       document.getElementById('loginSection').classList.remove('hidden');
       document.getElementById('profileSection').classList.add('hidden');
-    }
-  }
-
-  async function login() {
-    const phone = document.getElementById('phoneInput').value.trim();
-    const name = document.getElementById('nameInput').value.trim();
-    if (!phone || phone.length < 5) { alert('Ingresa un numero valido'); return; }
-    try {
-      await API.sendCode(phone);
-      const data = await API.verifyCode(phone, name || phone);
-      API.setToken(data.token);
-      API.setUser(data.user);
-      alert('Bienvenido ' + (data.user.name || '') + '!');
-      SOCKET.connect();
-      showProfile();
-    } catch (err) {
-      alert('Error: ' + err.message);
     }
   }
 
@@ -119,7 +297,10 @@
     }
   }
 
-  document.addEventListener('DOMContentLoaded', showProfile);
+  document.addEventListener('DOMContentLoaded', () => {
+    initFirebase();
+    showProfile();
+  });
 </script>
 </body>
 </html>
