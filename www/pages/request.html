@@ -55,14 +55,14 @@
     <div class="form-group">
       <label><i class="fas fa-circle-dot" style="color:#10b981"></i> Punto de partida</label>
       <div class="autocomplete-wrap">
-        <div class="input-group"><i class="fas fa-location-dot"></i><input type="text" id="pickupInput" placeholder="Direccion de recogida" value="Av. Casma 123" oninput="autocomplete(this, 'pickupList')" /></div>
+        <div class="input-group"><i class="fas fa-location-dot"></i><input type="text" id="pickupInput" placeholder="Direccion de recogida" value="Av. Casma 123" oninput="autoCompletePlace(this, 'pickupList')" /></div>
         <div class="autocomplete-list" id="pickupList"></div>
       </div>
     </div>
     <div class="form-group">
       <label><i class="fas fa-flag-checkered" style="color:#ef4444"></i> Destino</label>
       <div class="autocomplete-wrap">
-        <div class="input-group"><i class="fas fa-location-arrow"></i><input type="text" id="destInput" placeholder="A donde vas?" oninput="autocomplete(this, 'destList')" /></div>
+        <div class="input-group"><i class="fas fa-location-arrow"></i><input type="text" id="destInput" placeholder="A donde vas?" oninput="autoCompletePlace(this, 'destList')" /></div>
         <div class="autocomplete-list" id="destList"></div>
       </div>
     </div>
@@ -99,7 +99,7 @@
     } catch { console.log('No se pudo cargar lugares'); }
   }
 
-  function autocomplete(input, listId) {
+  function autoCompletePlace(input, listId) {
     const list = document.getElementById(listId);
     const val = input.value.toLowerCase().trim();
     if (!val || val.length < 1) { list.style.display = 'none'; return; }
