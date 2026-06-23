@@ -277,7 +277,19 @@
     } catch (err) { alert('Error: ' + err.message); }
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', async () => {
+    await API.refreshProfile();
+    try {
+      const profile = await API.getProfile();
+      if (profile) {
+        const driverData = await API.request('/api/drivers/status');
+        if (driverData.driver) {
+          available = driverData.driver.available;
+          updateStatus();
+          if (available) SOCKET.connect();
+        }
+      }
+    } catch {}
     loadActiveRide();
   });
 </script>

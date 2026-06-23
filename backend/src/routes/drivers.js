@@ -26,6 +26,11 @@ router.get('/nearby', async (req, res) => {
   res.json({ drivers });
 });
 
+router.get('/status', async (req, res) => {
+  const driver = await Driver.findOne({ userId: req.userId });
+  res.json({ driver });
+});
+
 router.get('/:id', async (req, res) => {
   const driver = await Driver.findById(req.params.id).populate('userId', 'name phone photoURL');
   if (!driver) return res.status(404).json({ error: 'Conductor no encontrado' });
