@@ -208,9 +208,7 @@
     });
     SOCKET.on('ride:status', (data) => {
       updateProgress(data.status);
-      if (data.status === 'arrived') {
-        document.getElementById('statusText').textContent = 'Conductor llego';
-      } else if (data.status === 'in_progress') {
+      if (data.status === 'in_progress') {
         document.getElementById('statusText').textContent = 'En viaje';
       } else if (data.status === 'completed') {
         document.getElementById('statusText').textContent = 'Completado';
@@ -225,6 +223,15 @@
         }, 1500);
       }
       showActionButtons(data.status);
+    });
+    SOCKET.on('ride:arrived', () => {
+      updateProgress('arrived');
+      document.getElementById('statusText').textContent = 'Conductor llego';
+      showActionButtons('arrived');
+    });
+    SOCKET.on('ride:cancelled', () => {
+      alert('Viaje cancelado por el conductor');
+      location.href = '../index.html';
     });
     SOCKET.on('ride:driver_location', (data) => {
       if (data.lat && data.lng) {

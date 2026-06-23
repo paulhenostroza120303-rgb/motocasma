@@ -179,12 +179,16 @@
 
   async function updateRideStatus(status) {
     if (!currentRide) return;
+    const userId = currentRide.userId?._id || currentRide.userId;
     try {
-      if (status === 'arrived') await API.arrivedRide(currentRide._id);
-      else if (status === 'start') await API.startRide(currentRide._id);
-      else if (status === 'complete') {
+      if (status === 'arrived') {
+        await API.arrivedRide(currentRide._id);
+        SOCKET.emit('ride:arrived', { rideId: currentRide._id, userId });
+      } else if (status === 'start') {
+        await API.startRide(currentRide._id);
+        SOCKET.emit('ride:start', { rideId: currentRide._id, userId });
+      } else if (status === 'complete') {
         await API.completeRide(currentRide._id);
-        const userId = currentRide.userId?._id || currentRide.userId;
         SOCKET.emit('ride:complete', { rideId: currentRide._id, userId });
         currentRide = null;
         document.getElementById('activeRideSection').style.display = 'none';
@@ -227,8 +231,16 @@
   async function acceptRide(rideId, userName, pickup, dest, price) {
     if (!available) { alert('Activate primero'); return; }
     try {
+      const user = API.getUser();
       await API.acceptRide(rideId);
-      SOCKET.emit('ride:accept', { rideId, userId: '' });
+      SOCKET.emit('ride:accept', {
+        rideId,
+        userId: currentRide?.userId?._id || currentRide?.userId || '',
+        driverId: user?.id || user?._id,
+        driverName: user?.name || 'Conductor',
+        driverPhone: user?.phone || '',
+        driverPlate: '---'
+      });
       currentRide = { _id: rideId, userId: { name: userName }, pickup: { address: pickup }, destination: { address: dest }, price, status: 'accepted' };
       document.getElementById('requestsContainer').innerHTML = '';
       showActiveRide(currentRide);

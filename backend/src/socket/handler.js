@@ -30,6 +30,7 @@ export function setupSocketHandlers(io) {
 
     socket.on('ride:arrived', ({ rideId, userId }) => {
       io.to(`user:${userId}`).emit('ride:arrived', { rideId });
+      io.to(`user:${userId}`).emit('ride:status', { rideId, status: 'arrived' });
     });
 
     socket.on('driver:location', ({ rideId, userId, lat, lng }) => {
