@@ -31,6 +31,12 @@
     .vehicle-card .price { font-size: 13px; color: #6b7280; }
     .price-estimate { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-top: 1px solid #e5e7eb; margin-top: 12px; }
     .price-estimate .amount { font-size: 24px; font-weight: 800; color: #1f2937; }
+    .autocomplete-wrap { position: relative; }
+    .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background: white; border-radius: 0 0 12px 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.12); z-index: 10; max-height: 200px; overflow-y: auto; display: none; }
+    .autocomplete-item { padding: 10px 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 14px; border-bottom: 1px solid #f3f4f6; }
+    .autocomplete-item:hover { background: #fffbeb; }
+    .autocomplete-item i { color: #f59e0b; font-size: 14px; width: 20px; text-align: center; }
+    .autocomplete-item .sub { font-size: 12px; color: #9ca3af; }
     .btn-primary { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1f2937; font-weight: 700; border: none; border-radius: 50px; padding: 16px; font-size: 16px; width: 100%; cursor: pointer; box-shadow: 0 4px 15px rgba(251,191,36,0.4); transition: 0.2s; }
     .btn-primary:hover { transform: scale(1.02); }
     .nav-bottom { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 8px 0 12px; border-top: 1px solid #e5e7eb; max-width: 480px; }
@@ -48,11 +54,17 @@
   <div class="form-card">
     <div class="form-group">
       <label><i class="fas fa-circle-dot" style="color:#10b981"></i> Punto de partida</label>
-      <div class="input-group"><i class="fas fa-location-dot"></i><input type="text" placeholder="Direccion de recogida" value="Av. Casma 123" /></div>
+      <div class="autocomplete-wrap">
+        <div class="input-group"><i class="fas fa-location-dot"></i><input type="text" id="pickupInput" placeholder="Direccion de recogida" value="Av. Casma 123" oninput="autocomplete(this, 'pickupList')" /></div>
+        <div class="autocomplete-list" id="pickupList"></div>
+      </div>
     </div>
     <div class="form-group">
       <label><i class="fas fa-flag-checkered" style="color:#ef4444"></i> Destino</label>
-      <div class="input-group"><i class="fas fa-location-arrow"></i><input type="text" placeholder="A donde vas?" /></div>
+      <div class="autocomplete-wrap">
+        <div class="input-group"><i class="fas fa-location-arrow"></i><input type="text" id="destInput" placeholder="A donde vas?" oninput="autocomplete(this, 'destList')" /></div>
+        <div class="autocomplete-list" id="destList"></div>
+      </div>
     </div>
     <div class="form-group">
       <label>Tipo de vehiculo</label>
@@ -76,25 +88,73 @@
   </div>
 </div>
 <script>
+  let casmaPlaces = [];
   let pickupInput, destInput, priceDisplay;
+  let selectedPickup = null, selectedDest = null;
+
+  async function loadPlaces() {
+    try {
+      const res = await fetch('../data/casma-places.json');
+      casmaPlaces = await res.json();
+    } catch { console.log('No se pudo cargar lugares'); }
+  }
+
+  function autocomplete(input, listId) {
+    const list = document.getElementById(listId);
+    const val = input.value.toLowerCase().trim();
+    if (!val || val.length < 1) { list.style.display = 'none'; return; }
+
+    const matches = casmaPlaces.filter(p =>
+      p.name.toLowerCase().includes(val) || p.address.toLowerCase().includes(val) || p.type.toLowerCase().includes(val)
+    ).slice(0, 6);
+
+    if (!matches.length) { list.style.display = 'none'; return; }
+
+    list.innerHTML = matches.map(p =>
+      '<div class="autocomplete-item" onclick="selectPlace(\'' + listId + '\',\'' + input.id + '\',\'' + p.id + '\',\'' + p.name.replace(/'/g, "\\'") + '\',' + p.lat + ',' + p.lng + ')">' +
+        '<i class="fas fa-' + (p.type === 'plaza' ? 'landmark' : p.type === 'avenida' ? 'road' : p.type === 'mercado' ? 'store' : p.type === 'salud' ? 'hospital' : p.type === 'gobierno' ? 'building' : p.type === 'iglesia' ? 'church' : p.type === 'transporte' ? 'bus' : p.type === 'colegio' ? 'graduation-cap' : p.type === 'deporte' ? 'futbol' : 'map-pin') + '"></i>' +
+        '<div><div>' + p.name + '</div><div class="sub">' + p.address + '</div></div>' +
+      '</div>'
+    ).join('');
+    list.style.display = 'block';
+  }
+
+  function selectPlace(listId, inputId, id, name, lat, lng) {
+    document.getElementById(inputId).value = name;
+    document.getElementById(listId).style.display = 'none';
+    if (inputId === 'pickupInput') { selectedPickup = { address: name, lat, lng }; }
+    else { selectedDest = { address: name, lat, lng }; }
+  }
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.autocomplete-wrap')) {
+      document.querySelectorAll('.autocomplete-list').forEach(l => l.style.display = 'none');
+    }
+  });
+
   document.addEventListener('DOMContentLoaded', () => {
-    pickupInput = document.querySelector('input[placeholder*="Direccion"]');
-    destInput = document.querySelector('input[placeholder*="donde"]');
+    pickupInput = document.getElementById('pickupInput');
+    destInput = document.getElementById('destInput');
     priceDisplay = document.querySelector('.amount');
+    loadPlaces();
     if (!API.isLoggedIn()) {
       document.querySelector('.btn-primary').textContent = ' INICIAR SESION PRIMERO';
       document.querySelector('.btn-primary').onclick = () => { location.href = 'profile.html'; };
     }
   });
+
   function selectVehicle(el) { document.querySelectorAll('.vehicle-card').forEach(c => c.classList.remove('selected')); el.classList.add('selected'); }
+
   async function confirmRide() {
     if (!API.isLoggedIn()) { alert('Inicia sesion primero'); location.href = 'profile.html'; return; }
+    const pickup = selectedPickup || { address: pickupInput?.value || 'Av. Casma 123', lat: window.userLat || -9.4747, lng: window.userLng || -78.3016 };
+    const dest = selectedDest || { address: destInput?.value || 'Plaza de Armas', lat: -9.4747, lng: -78.3016 };
     try {
-      await API.requestRide(
-        { address: pickupInput?.value || 'Av. Casma 123', lat: window.userLat || -9.4531, lng: window.userLng || -78.2989 },
-        { address: destInput?.value || 'Plaza de Armas', lat: -9.455, lng: -78.300 },
-        8
-      );
+      const data = await API.requestRide(pickup, dest, 8);
+      if (data.ride) {
+        SOCKET.connect();
+        SOCKET.emit('ride:request', { rideId: data.ride._id, pickup: data.ride.pickup, destination: data.ride.destination, price: data.ride.price, userName: (API.getUser() || {}).name || 'Usuario' });
+      }
       alert('Viaje solicitado! Buscando conductor...');
       location.href = 'trip.html';
     } catch(err) { alert('Error: ' + err.message); }

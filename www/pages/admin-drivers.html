@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Admin - Conductores</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f3f4f6; }
+    .container { max-width: 480px; margin: 0 auto; background: #f3f4f6; min-height: 100vh; padding-bottom: 80px; }
+    .header { background: linear-gradient(135deg, #fbbf24, #f59e0b); padding: 16px; display: flex; align-items: center; gap: 12px; color: #1f2937; }
+    .header h1 { font-size: 20px; font-weight: 800; }
+    .header i { cursor: pointer; }
+    .form-card { background: white; margin: 16px; border-radius: 18px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px; }
+    .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 12px; font-size: 14px; outline: none; }
+    .form-group input:focus { border-color: #fbbf24; }
+    .btn-primary { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1f2937; font-weight: 700; border: none; border-radius: 50px; padding: 14px; font-size: 15px; width: 100%; cursor: pointer; }
+    .btn-danger { background: #ef4444; color: white; border: none; border-radius: 50px; padding: 6px 14px; font-size: 12px; cursor: pointer; }
+    .driver-card { background: white; margin: 8px 16px; border-radius: 14px; padding: 12px; display: flex; align-items: center; gap: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .driver-avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #fbbf24, #f59e0b); display: flex; align-items: center; justify-content: center; font-size: 18px; color: white; flex-shrink: 0; }
+    .driver-info { flex: 1; }
+    .driver-info .name { font-weight: 600; font-size: 15px; }
+    .driver-info .plate { font-size: 12px; color: #6b7280; font-family: monospace; }
+    .driver-info .status { font-size: 12px; }
+    .section-title { font-size: 18px; font-weight: 700; color: #1f2937; margin: 16px 16px 4px; }
+    .loading { text-align: center; padding: 40px; color: #6b7280; }
+    .success-msg { background: #d1fae5; color: #065f46; padding: 10px; border-radius: 10px; margin-bottom: 12px; text-align: center; font-size: 14px; display: none; }
+    .nav-bottom { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 8px 0 12px; border-top: 1px solid #e5e7eb; max-width: 480px; }
+    .nav-item { text-align: center; font-size: 12px; color: #9ca3af; cursor: pointer; }
+    .nav-item.active { color: #f59e0b; }
+    .nav-item i { font-size: 22px; display: block; margin-bottom: 2px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <i class="fas fa-arrow-left" onclick="history.back()"></i>
+    <h1><i class="fas fa-crown"></i> Admin</h1>
+  </div>
+
+  <div class="section-title">Agregar Conductor</div>
+  <div class="form-card">
+    <div id="successMsg" class="success-msg">Conductor agregado</div>
+    <div class="form-group"><label>Nombre completo</label><input type="text" id="driverName" placeholder="Ej: Juan Perez" /></div>
+    <div class="form-group"><label>Telefono</label><input type="tel" id="driverPhone" placeholder="+51 999 888 777" value="+51 " /></div>
+    <div class="form-group"><label>Foto (URL)</label><input type="text" id="driverPhoto" placeholder="https://..." /></div>
+    <div class="form-group"><label>Placa del vehiculo</label><input type="text" id="driverPlate" placeholder="ABC-123" style="text-transform:uppercase" /></div>
+    <div class="form-group"><label>Tipo de vehiculo</label>
+      <select id="driverVehicle">
+        <option value="MotoTaxi">MotoTaxi</option>
+        <option value="MotoLineal">Moto Lineal</option>
+        <option value="TukTuk">Tuk Tuk</option>
+        <option value="Taxi">Taxi</option>
+      </select>
+    </div>
+    <button class="btn-primary" onclick="addDriver()"><i class="fas fa-plus"></i> Agregar Conductor</button>
+  </div>
+
+  <div class="section-title">Conductores Registrados <span id="driverCount" style="font-weight:400;color:#6b7280;font-size:14px"></span></div>
+  <div id="driversList"><div class="loading"><i class="fas fa-spinner fa-spin"></i> Cargando...</div></div>
+
+  <div class="nav-bottom">
+    <div class="nav-item" onclick="location.href='../index.html'"><i class="fas fa-home"></i>Inicio</div>
+    <div class="nav-item" onclick="location.href='request.html'"><i class="fas fa-plus-circle"></i>Pedir</div>
+    <div class="nav-item" onclick="location.href='history.html'"><i class="fas fa-clock"></i>Historial</div>
+    <div class="nav-item active"><i class="fas fa-crown"></i>Admin</div>
+    <div class="nav-item" onclick="location.href='profile.html'"><i class="fas fa-user"></i>Perfil</div>
+  </div>
+</div>
+<script>
+  async function addDriver() {
+    const data = {
+      name: document.getElementById('driverName').value.trim(),
+      phone: document.getElementById('driverPhone').value.trim(),
+      photoURL: document.getElementById('driverPhoto').value.trim(),
+      vehiclePlate: document.getElementById('driverPlate').value.trim(),
+      vehicleType: document.getElementById('driverVehicle').value
+    };
+    if (!data.name || !data.phone || !data.vehiclePlate) { alert('Nombre, telefono y placa requeridos'); return; }
+    try {
+      await API.addDriver(data);
+      document.getElementById('successMsg').style.display = 'block';
+      document.getElementById('driverName').value = '';
+      document.getElementById('driverPhone').value = '+51 ';
+      document.getElementById('driverPhoto').value = '';
+      document.getElementById('driverPlate').value = '';
+      setTimeout(() => document.getElementById('successMsg').style.display = 'none', 3000);
+      loadDrivers();
+    } catch (err) { alert('Error: ' + err.message); }
+  }
+
+  async function loadDrivers() {
+    try {
+      const data = await API.getDrivers();
+      const drivers = data.drivers || [];
+      document.getElementById('driverCount').textContent = '(' + drivers.length + ')';
+      const container = document.getElementById('driversList');
+      if (!drivers.length) { container.innerHTML = '<p style="text-align:center;color:#9ca3af;padding:20px">Sin conductores</p>'; return; }
+      container.innerHTML = drivers.map(d => {
+        const available = d.available ? '<span style="color:#10b981">En linea</span>' : '<span style="color:#9ca3af">Desconectado</span>';
+        return '<div class="driver-card"><div class="driver-avatar"><i class="fas fa-user"></i></div><div class="driver-info"><div class="name">' + (d.name || '---') + '</div><div class="plate">' + (d.vehiclePlate || '---') + ' - ' + (d.phone || '') + '</div><div class="status">Calif: ' + (d.rating || 0) + ' | Viajes: ' + (d.totalTrips || 0) + ' | ' + available + '</div></div><button class="btn-danger" onclick="deleteDriver(\'' + d._id + '\')"><i class="fas fa-trash"></i></button></div>';
+      }).join('');
+    } catch { document.getElementById('driversList').innerHTML = '<p style="text-align:center;color:#9ca3af;padding:20px">Error al cargar</p>'; }
+  }
+
+  async function deleteDriver(id) {
+    if (!confirm('Eliminar conductor?')) return;
+    try { await API.deleteDriver(id); loadDrivers(); }
+    catch (err) { alert('Error: ' + err.message); }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (!API.isLoggedIn() || !API.isOwner()) { alert('Solo el propietario'); location.href = '../index.html'; return; }
+    loadDrivers();
+  });
+</script>
+</body>
+</html>

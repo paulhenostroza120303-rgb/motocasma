@@ -29,9 +29,10 @@
     .progress-dot { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
     .progress-dot .dot { width: 10px; height: 10px; border-radius: 50%; background: #d1d5db; flex-shrink: 0; }
     .progress-dot .dot.active { background: #fbbf24; box-shadow: 0 0 0 4px rgba(251,191,36,0.2); }
-    .progress-dot .dot.arrived { background: #10b981; }
+    .progress-dot .dot.completed { background: #10b981; box-shadow: 0 0 0 4px rgba(16,185,129,0.2); }
     .progress-dot .label { font-size: 14px; color: #6b7280; }
     .progress-dot .label.active { color: #1f2937; font-weight: 600; }
+    .progress-dot .label.completed { color: #10b981; font-weight: 600; }
     .eta-card { background: #1f2937; margin: 16px; border-radius: 16px; padding: 16px; display: flex; align-items: center; justify-content: space-between; color: white; }
     .eta-card .time { font-size: 32px; font-weight: 800; }
     .eta-card .sub { font-size: 13px; color: #9ca3af; }
@@ -39,6 +40,15 @@
     .action-btn { flex: 1; padding: 14px; border-radius: 14px; border: none; font-weight: 600; cursor: pointer; font-size: 14px; }
     .action-btn.call { background: #10b981; color: white; }
     .action-btn.cancel { background: #fee2e2; color: #ef4444; }
+    #cancelBtn { display: block; }
+    .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:100; display:flex; align-items:center; justify-content:center; }
+    .modal-card { background:white; border-radius:24px; padding:24px; width:320px; text-align:center; }
+    .modal-card h2 { font-size:22px; font-weight:700; margin-bottom:8px; }
+    .modal-card .stars { font-size:40px; margin:16px 0; cursor:pointer; }
+    .modal-card .stars i { color:#d1d5db; margin:0 4px; transition:0.2s; }
+    .modal-card .stars i.active { color:#f59e0b; }
+    .modal-card .star-hint { font-size:13px; color:#9ca3af; margin-bottom:16px; }
+    .btn-rate { background:linear-gradient(135deg,#fbbf24,#f59e0b); border:none; padding:14px 0; width:100%; border-radius:50px; font-weight:700; font-size:16px; cursor:pointer; }
     .nav-bottom { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 8px 0 12px; border-top: 1px solid #e5e7eb; max-width: 480px; }
     .nav-item { text-align: center; font-size: 12px; color: #9ca3af; cursor: pointer; }
     .nav-item.active { color: #f59e0b; }
@@ -48,11 +58,11 @@
 <body>
 <div class="container">
   <div class="header">
-    <h1><i class="fas fa-motorcycle"></i> <span id="statusText">En Viaje</span></h1>
-    <span id="priceDisplay" style="font-size:14px;font-weight:600">S/ 8.00</span>
+    <h1><i class="fas fa-motorcycle"></i> <span id="statusText">Buscando...</span></h1>
+    <span id="priceDisplay" style="font-size:14px;font-weight:600">S/ 0.00</span>
   </div>
   <div class="map-container">
-    <iframe id="mapFrame" src="https://www.openstreetmap.org/export/embed.html?bbox=-78.3039,-9.4581,-78.2939,-9.4481&layer=mapnik" allowfullscreen loading="lazy"></iframe>
+    <iframe id="mapFrame" src="https://www.openstreetmap.org/export/embed.html?bbox=-78.308,-9.462,-78.290,-9.446&layer=mapnik" allowfullscreen loading="lazy"></iframe>
   </div>
   <div class="trip-status">
     <div class="driver-info">
@@ -67,16 +77,17 @@
       <div class="progress-dot"><div class="dot active" id="dotSearching"></div><span class="label active" id="labelSearching">Buscando conductor</span></div>
       <div class="progress-dot"><div class="dot" id="dotAccepted"></div><span class="label" id="labelAccepted">Conductor acepto</span></div>
       <div class="progress-dot"><div class="dot" id="dotArrived"></div><span class="label" id="labelArrived">Conductor llego</span></div>
-      <div class="progress-dot"><div class="dot" id="dotComplete"></div><span class="label" id="labelComplete">Viaje completado</span></div>
+      <div class="progress-dot"><div class="dot" id="dotInProgress"></div><span class="label" id="labelInProgress">En viaje</span></div>
+      <div class="progress-dot"><div class="dot" id="dotComplete"></div><span class="label" id="labelComplete">Completado</span></div>
     </div>
   </div>
-  <div class="eta-card">
+  <div class="eta-card" id="etaCard">
     <div><div class="time" id="etaTime">--</div><div class="sub">Tiempo estimado</div></div>
     <div style="text-align:right"><div style="font-size:18px;font-weight:700" id="etaDistance">--</div><div class="sub">Distancia</div></div>
   </div>
   <div class="action-buttons">
     <button class="action-btn call"><i class="fas fa-phone"></i> Llamar</button>
-    <button class="action-btn cancel" onclick="cancelTrip()"><i class="fas fa-ban"></i> Cancelar</button>
+    <button class="action-btn cancel" id="cancelBtn" onclick="cancelTrip()"><i class="fas fa-ban"></i> Cancelar</button>
   </div>
   <div class="nav-bottom">
     <div class="nav-item active"><i class="fas fa-motorcycle"></i>Viaje</div>
@@ -84,13 +95,40 @@
     <div class="nav-item" onclick="location.href='../index.html'"><i class="fas fa-home"></i>Inicio</div>
   </div>
 </div>
+
+<div id="ratingModal" class="modal-overlay" style="display:none">
+  <div class="modal-card">
+    <h2>Calificar viaje</h2>
+    <p style="color:#6b7280;font-size:14px">Como fue tu viaje con <strong id="rateDriverName">conductor</strong>?</p>
+    <div class="stars" id="starContainer">
+      <i class="fas fa-star" data-v="1"></i><i class="fas fa-star" data-v="2"></i><i class="fas fa-star" data-v="3"></i><i class="fas fa-star" data-v="4"></i><i class="fas fa-star" data-v="5"></i>
+    </div>
+    <div class="star-hint" id="starHint">Toca para calificar</div>
+    <button class="btn-rate" onclick="submitRating()"><i class="fas fa-check"></i> Calificar</button>
+  </div>
+</div>
+
 <script>
+  let rideId = null;
+  let selectedRating = 0;
+
   async function loadRide() {
     if (!API.isLoggedIn()) { location.href = 'profile.html'; return; }
     try {
       const data = await API.getActiveRide();
-      if (!data.ride) { location.href = '../index.html'; return; }
+      if (!data.ride) {
+        const doneRide = await API.getLastRideForRating();
+        if (doneRide && doneRide.ride && !doneRide.ride.rated) {
+          rideId = doneRide.ride._id;
+          document.getElementById('rateDriverName').textContent = doneRide.ride.driverId?.name || 'Conductor';
+          document.getElementById('ratingModal').style.display = 'flex';
+        } else {
+          location.href = '../index.html';
+        }
+        return;
+      }
       const r = data.ride;
+      rideId = r._id;
       document.getElementById('priceDisplay').textContent = 'S/ ' + r.price + '.00';
       if (r.driverId) {
         document.getElementById('driverName').textContent = r.driverId.name || 'Conductor';
@@ -98,43 +136,96 @@
         document.getElementById('driverPlate').textContent = r.driverId.vehiclePlate || '---';
       }
       updateProgress(r.status);
+      showActionButtons(r.status);
     } catch { location.href = '../index.html'; }
   }
 
   function updateProgress(status) {
-    const dots = ['dotSearching','dotAccepted','dotArrived','dotComplete'];
-    const labels = ['labelSearching','labelAccepted','labelArrived','labelComplete'];
-    const statuses = ['searching','accepted','arrived','completed'];
-    const idx = statuses.indexOf(status);
+    const steps = ['searching','accepted','arrived','in_progress','completed'];
+    const dots = ['dotSearching','dotAccepted','dotArrived','dotInProgress','dotComplete'];
+    const labels = ['labelSearching','labelAccepted','labelArrived','labelInProgress','labelComplete'];
+    const idx = steps.indexOf(status);
+    if (idx === -1) return;
     dots.forEach((id, i) => {
-      document.getElementById(id).className = 'dot' + (i <= idx ? (status === 'arrived' && i === 2 ? ' arrived' : ' active') : '');
-      document.getElementById(labels[i]).className = 'label' + (i <= idx ? ' active' : '');
+      const el = document.getElementById(id);
+      el.className = 'dot';
+      if (i < idx) el.classList.add('completed');
+      else if (i === idx) el.classList.add('active');
+      document.getElementById(labels[i]).className = 'label';
+      if (i < idx) document.getElementById(labels[i]).classList.add('completed');
+      else if (i === idx) document.getElementById(labels[i]).classList.add('active');
     });
-    document.getElementById('statusText').textContent =
-      status === 'searching' ? 'Buscando...' :
-      status === 'accepted' ? 'Conductor en camino' :
-      status === 'arrived' ? 'Conductor llego' :
-      status === 'in_progress' ? 'En viaje' : 'Completado';
+    const statusMap = { searching: 'Buscando...', accepted: 'Conductor en camino', arrived: 'Conductor llego', in_progress: 'En viaje', completed: 'Completado' };
+    document.getElementById('statusText').textContent = statusMap[status] || 'En viaje';
+  }
+
+  function showActionButtons(status) {
+    const cancelBtn = document.getElementById('cancelBtn');
+    if (status === 'completed') cancelBtn.style.display = 'none';
+    else cancelBtn.style.display = 'block';
   }
 
   async function cancelTrip() {
     if (!confirm('Cancelar viaje?')) return;
     try {
-      const data = await API.getActiveRide();
-      if (data.ride) await API.cancelRide(data.ride._id);
+      if (rideId) await API.cancelRide(rideId);
       alert('Viaje cancelado');
       location.href = '../index.html';
     } catch { location.href = '../index.html'; }
   }
 
+  document.querySelectorAll('#starContainer i').forEach(el => {
+    el.addEventListener('click', function() {
+      selectedRating = parseInt(this.dataset.v);
+      document.querySelectorAll('#starContainer i').forEach((s, i) => {
+        s.classList.toggle('active', i < selectedRating);
+      });
+      document.getElementById('starHint').textContent = selectedRating === 5 ? 'Excelente!' : selectedRating === 4 ? 'Buen viaje' : selectedRating === 3 ? 'Regular' : 'Malo';
+    });
+  });
+
+  async function submitRating() {
+    if (!selectedRating) { alert('Selecciona una calificacion'); return; }
+    try {
+      await API.rateRide(rideId, selectedRating);
+      document.getElementById('ratingModal').style.display = 'none';
+      alert('Gracias por calificar!');
+      location.href = '../index.html';
+    } catch (err) { alert('Error: ' + err.message); }
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     SOCKET.connect();
     SOCKET.on('ride:accepted', (data) => {
-      document.getElementById('driverName').textContent = data.driverName;
+      document.getElementById('driverName').textContent = data.driverName || (data.driver ? data.driver.name : 'Conductor');
       updateProgress('accepted');
     });
     SOCKET.on('ride:status', (data) => {
       updateProgress(data.status);
+      if (data.status === 'arrived') {
+        document.getElementById('statusText').textContent = 'Conductor llego';
+      } else if (data.status === 'in_progress') {
+        document.getElementById('statusText').textContent = 'En viaje';
+      } else if (data.status === 'completed') {
+        document.getElementById('statusText').textContent = 'Completado';
+        document.getElementById('cancelBtn').style.display = 'none';
+        setTimeout(async () => {
+          const done = await API.getLastRideForRating();
+          if (done && done.ride && !done.ride.rated) {
+            rideId = done.ride._id;
+            document.getElementById('rateDriverName').textContent = done.ride.driverId?.name || 'Conductor';
+            document.getElementById('ratingModal').style.display = 'flex';
+          }
+        }, 1500);
+      }
+      showActionButtons(data.status);
+    });
+    SOCKET.on('ride:driver_location', (data) => {
+      if (data.lat && data.lng) {
+        document.getElementById('mapFrame').src = 'https://www.openstreetmap.org/export/embed.html?bbox=' + (data.lng - 0.008) + ',' + (data.lat - 0.008) + ',' + (data.lng + 0.008) + ',' + (data.lat + 0.008) + '&layer=mapnik&marker=' + data.lat + ',' + data.lng;
+        document.getElementById('etaTime').textContent = '5 min';
+        document.getElementById('etaDistance').textContent = '1.2 km';
+      }
     });
     loadRide();
   });

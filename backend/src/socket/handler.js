@@ -2,40 +2,49 @@ let activeUsers = {};
 
 export function setupSocketHandlers(io) {
   io.on('connection', (socket) => {
-    console.log('Usuario conectado:', socket.id);
+    console.log('Socket conectado:', socket.id);
 
     socket.on('user:online', ({ userId, role, lat, lng }) => {
       activeUsers[socket.id] = { userId, role, lat, lng };
-      if (role === 'driver') {
-        socket.join('drivers');
-        io.to('users').emit('driver:online', { driverId: userId, lat, lng });
-      } else {
-        socket.join('users');
-      }
+      socket.join(role === 'driver' ? 'drivers' : 'users');
+      socket.join(`user:${userId}`);
     });
 
     socket.on('ride:request', (data) => {
       io.to('drivers').emit('ride:new', {
-        ...data,
+        rideId: data.rideId,
+        pickup: data.pickup,
+        destination: data.destination,
+        price: data.price,
+        userName: data.userName,
         timestamp: new Date()
       });
     });
 
-    socket.on('ride:accept', ({ rideId, driverId, driverName, driverLat, driverLng }) => {
-      const rideSockets = Object.entries(activeUsers).filter(
-        ([_, u]) => u.userId === data?.userId
-      );
-      rideSockets.forEach(([sid]) => {
-        io.to(sid).emit('ride:accepted', { rideId, driverId, driverName, driverLat, driverLng });
-      });
+    socket.on('ride:accept', async ({ rideId, driverId, driverName, driverPhone, driverPlate, driverLat, driverLng, userId }) => {
+      io.to(`user:${userId}`).emit('ride:accepted', { rideId, driverId, driverName, driverPhone, driverPlate, driverLat, driverLng });
+      io.to('drivers').emit('ride:taken', { rideId });
     });
 
-    socket.on('driver:location', ({ rideId, lat, lng }) => {
-      socket.broadcast.emit(`ride:location:${rideId}`, { lat, lng });
+    socket.on('ride:arrived', ({ rideId, userId }) => {
+      io.to(`user:${userId}`).emit('ride:arrived', { rideId });
     });
 
-    socket.on('ride:status', ({ rideId, status }) => {
-      socket.broadcast.emit(`ride:status:${rideId}`, { status });
+    socket.on('driver:location', ({ rideId, userId, lat, lng }) => {
+      io.to(`user:${userId}`).emit('ride:location', { rideId, lat, lng });
+    });
+
+    socket.on('ride:start', ({ rideId, userId }) => {
+      io.to(`user:${userId}`).emit('ride:status', { rideId, status: 'in_progress' });
+    });
+
+    socket.on('ride:complete', ({ rideId, userId }) => {
+      io.to(`user:${userId}`).emit('ride:status', { rideId, status: 'completed' });
+    });
+
+    socket.on('ride:cancelled', ({ rideId, userId }) => {
+      io.to(`user:${userId}`).emit('ride:cancelled', { rideId });
+      io.to('drivers').emit('ride:cancelled', { rideId });
     });
 
     socket.on('disconnect', () => {

@@ -20,62 +20,85 @@ const API = {
     const token = this.getToken();
     const headers = { 'Content-Type': 'application/json', ...options.headers };
     if (token) headers['Authorization'] = `Bearer ${token}`;
-
     const res = await fetch(`${CONFIG.API_URL}${endpoint}`, { ...options, headers });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Error de conexion');
     return data;
   },
 
-  async sendCode(phone) {
-    return this.request('/api/auth/send-code', {
-      method: 'POST', body: JSON.stringify({ phone })
-    });
+  sendCode(phone) {
+    return this.request('/api/auth/send-code', { method: 'POST', body: JSON.stringify({ phone }) });
   },
 
-  async verifyCode(phone, name) {
-    const data = await this.request('/api/auth/verify-code', {
-      method: 'POST', body: JSON.stringify({ phone, name })
-    });
-    this.setToken(data.token);
-    this.setUser(data.user);
-    return data;
+  verifyCode(phone, name) {
+    return this.request('/api/auth/verify-code', { method: 'POST', body: JSON.stringify({ phone, name }) });
   },
 
-  async getProfile() {
+  getProfile() {
     return this.request('/api/auth/me');
   },
 
-  async requestRide(pickup, destination, price) {
-    return this.request('/api/rides/request', {
-      method: 'POST', body: JSON.stringify({ pickup, destination, price })
-    });
+  requestRide(pickup, destination, price) {
+    return this.request('/api/rides/request', { method: 'POST', body: JSON.stringify({ pickup, destination, price }) });
   },
 
-  async getActiveRide() {
+  getActiveRide() {
     return this.request('/api/rides/active');
   },
 
-  async cancelRide(rideId) {
+  getDriverActiveRide() {
+    return this.request('/api/rides/driver-active');
+  },
+
+  acceptRide(rideId) {
+    return this.request(`/api/rides/${rideId}/accept`, { method: 'PATCH' });
+  },
+
+  arrivedRide(rideId) {
+    return this.request(`/api/rides/${rideId}/arrived`, { method: 'PATCH' });
+  },
+
+  startRide(rideId) {
+    return this.request(`/api/rides/${rideId}/start`, { method: 'PATCH' });
+  },
+
+  completeRide(rideId) {
+    return this.request(`/api/rides/${rideId}/complete`, { method: 'PATCH' });
+  },
+
+  cancelRide(rideId) {
     return this.request(`/api/rides/${rideId}/cancel`, { method: 'PATCH' });
   },
 
-  async rateRide(rideId, rating) {
-    return this.request(`/api/rides/${rideId}/rate`, {
-      method: 'PATCH', body: JSON.stringify({ rating })
-    });
+  rateRide(rideId, rating) {
+    return this.request(`/api/rides/${rideId}/rate`, { method: 'PATCH', body: JSON.stringify({ rating }) });
   },
 
-  async getHistory() {
+  getHistory() {
     return this.request('/api/rides/history');
   },
 
-  async getNearbyDrivers(lat, lng) {
+  getNearbyDrivers(lat, lng) {
     return this.request(`/api/drivers/nearby?lat=${lat}&lng=${lng}`);
   },
 
-  isLoggedIn() {
-    return !!this.getToken();
+  addDriver(driverData) {
+    return this.request('/api/owner/drivers', { method: 'POST', body: JSON.stringify(driverData) });
+  },
+
+  getDrivers() {
+    return this.request('/api/owner/drivers');
+  },
+
+  deleteDriver(id) {
+    return this.request(`/api/owner/drivers/${id}`, { method: 'DELETE' });
+  },
+
+  isLoggedIn() { return !!this.getToken(); },
+
+  isOwner() {
+    const user = this.getUser();
+    return user && user.role === 'owner';
   },
 
   logout() {

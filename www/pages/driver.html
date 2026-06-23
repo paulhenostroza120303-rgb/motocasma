@@ -32,13 +32,22 @@
     .section-title { font-size: 18px; font-weight: 700; color: #1f2937; margin: 16px 16px 8px; }
     .request-item { background: white; margin: 8px 16px; padding: 16px; border-radius: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); display: flex; align-items: center; gap: 12px; }
     .request-item .info { flex: 1; }
-    .request-item .name { font-weight: 600; }
+    .request-item .name { font-weight: 600; font-size: 16px; }
     .request-item .detail { font-size: 13px; color: #6b7280; }
-    .btn-small { background: #fbbf24; border: none; padding: 8px 16px; border-radius: 50px; font-weight: 600; font-size: 13px; cursor: pointer; }
+    .request-item .price { font-size: 18px; font-weight: 700; color: #059669; }
+    .btn-small { background: #fbbf24; border: none; padding: 8px 20px; border-radius: 50px; font-weight: 600; font-size: 13px; cursor: pointer; }
+    .btn-green { background: #10b981; color: white; border: none; padding: 8px 20px; border-radius: 50px; font-weight: 600; font-size: 13px; cursor: pointer; }
+    .btn-red { background: #ef4444; color: white; border: none; padding: 8px 20px; border-radius: 50px; font-weight: 600; font-size: 13px; cursor: pointer; }
+    .active-ride { background: white; margin: 16px; border-radius: 16px; padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.10); }
+    .active-ride .user-name { font-size: 18px; font-weight: 700; }
+    .active-ride .route { font-size: 14px; color: #6b7280; margin: 8px 0; }
+    .active-ride .actions { display: flex; gap: 10px; margin-top: 12px; }
+    .active-ride .actions button { flex: 1; padding: 12px; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; }
     .nav-bottom { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 8px 0 12px; border-top: 1px solid #e5e7eb; max-width: 480px; }
     .nav-item { text-align: center; font-size: 12px; color: #9ca3af; cursor: pointer; }
     .nav-item.active { color: #f59e0b; }
     .nav-item i { font-size: 22px; display: block; margin-bottom: 2px; }
+    .empty { text-align: center; color: #9ca3af; padding: 40px; font-size: 14px; }
   </style>
 </head>
 <body>
@@ -48,6 +57,7 @@
     <h1><i class="fas fa-motorcycle"></i> Conductor</h1>
     <i class="fas fa-sliders"></i>
   </div>
+
   <div class="earnings-card">
     <div class="label">Ganancias de hoy</div>
     <div class="amount" id="earningsAmount">S/ 0.00</div>
@@ -57,14 +67,17 @@
       <div><div class="num" id="onlineTime">--</div><div class="lbl">Tiempo</div></div>
     </div>
   </div>
+
   <div class="toggle-card">
-    <span><i class="fas fa-power-off" style="color:#10b981"></i> Disponible</span>
-    <div class="toggle" id="toggleBtn" onclick="toggleAvailability(this)"></div>
+    <span><i class="fas fa-power-off" id="statusIcon" style="color:#9ca3af"></i> <span id="statusLabel">Desconectado</span></span>
+    <div class="toggle" id="toggleBtn" onclick="toggleAvailability()"></div>
   </div>
-  <div class="section-title">Solicitudes en vivo</div>
-  <div id="requestsContainer">
-    <p style="text-align:center;color:#9ca3af;padding:20px;font-size:14px">Esperando solicitudes...</p>
-  </div>
+
+  <div id="activeRideSection" style="display:none"></div>
+
+  <div class="section-title">Solicitudes Cercanas</div>
+  <div id="requestsContainer"><div class="empty">Activate para recibir solicitudes</div></div>
+
   <div class="nav-bottom">
     <div class="nav-item" onclick="location.href='../index.html'"><i class="fas fa-home"></i>Inicio</div>
     <div class="nav-item active"><i class="fas fa-motorcycle"></i>Conducir</div>
@@ -74,34 +87,150 @@
   </div>
 </div>
 <script>
-  async function toggleAvailability(el) {
-    el.classList.toggle('active');
-    const available = el.classList.contains('active');
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-      try {
-        await API.request('/api/drivers/availability', {
-          method: 'PUT', body: JSON.stringify({ available })
-        });
-      } catch {}
-      if (available) SOCKET.connect();
-    });
+  let available = false;
+  let currentRide = null;
+  let watchId = null;
+
+  function updateStatus() {
+    const icon = document.getElementById('statusIcon');
+    const label = document.getElementById('statusLabel');
+    const toggle = document.getElementById('toggleBtn');
+    if (available) {
+      icon.className = 'fas fa-power-off';
+      icon.style.color = '#10b981';
+      label.textContent = 'Disponible';
+      toggle.classList.add('active');
+    } else {
+      icon.className = 'fas fa-power-off';
+      icon.style.color = '#9ca3af';
+      label.textContent = 'Desconectado';
+      toggle.classList.remove('active');
+    }
+  }
+
+  async function toggleAvailability() {
+    available = !available;
+    updateStatus();
+    if (available) {
+      SOCKET.connect();
+      startLocationTracking();
+    } else {
+      stopLocationTracking();
+    }
+  }
+
+  function startLocationTracking() {
+    if (navigator.geolocation) {
+      watchId = navigator.geolocation.watchPosition(async (pos) => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        try {
+          await API.request('/api/drivers/availability', { method: 'PUT', body: JSON.stringify({ available: true }) });
+        } catch {}
+        if (currentRide) {
+          const userId = currentRide.userId?._id || currentRide.userId;
+          SOCKET.emit('driver:location', { rideId: currentRide._id, userId, lat, lng });
+        }
+      }, () => {}, { enableHighAccuracy: true, maximumAge: 10000 });
+    }
+  }
+
+  function stopLocationTracking() {
+    if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+    API.request('/api/drivers/availability', { method: 'PUT', body: JSON.stringify({ available: false }) }).catch(() => {});
+  }
+
+  async function loadActiveRide() {
+    try {
+      const data = await API.getDriverActiveRide();
+      if (data.ride) {
+        currentRide = data.ride;
+        showActiveRide(data.ride);
+      }
+    } catch {}
+  }
+
+  function showActiveRide(ride) {
+    const section = document.getElementById('activeRideSection');
+    section.style.display = 'block';
+    const userName = ride.userId?.name || 'Usuario';
+    const pickup = ride.pickup?.address || '---';
+    const dest = ride.destination?.address || '---';
+    const price = ride.price || 0;
+    const status = ride.status;
+
+    let actionButtons = '';
+    if (status === 'accepted') {
+      actionButtons = '<button class="btn-green" onclick="updateRideStatus(\'arrived\')"><i class="fas fa-check"></i> Llegue al lugar</button><button class="btn-red" onclick="cancelCurrentRide()"><i class="fas fa-ban"></i> Cancelar</button>';
+    } else if (status === 'arrived') {
+      actionButtons = '<button class="btn-green" onclick="updateRideStatus(\'start\')"><i class="fas fa-play"></i> Iniciar viaje</button><button class="btn-red" onclick="cancelCurrentRide()"><i class="fas fa-ban"></i> Cancelar</button>';
+    } else if (status === 'in_progress') {
+      actionButtons = '<button class="btn-green" onclick="updateRideStatus(\'complete\')"><i class="fas fa-flag-checkered"></i> Completar viaje</button>';
+    }
+
+    section.innerHTML = '<div class="active-ride"><div class="user-name"><i class="fas fa-user"></i> ' + userName + '</div><div class="route">' + pickup + ' → ' + dest + '</div><div style="font-size:20px;font-weight:700;margin:8px 0">S/ ' + price + '.00</div><div class="actions">' + actionButtons + '</div></div>';
+  }
+
+  async function updateRideStatus(status) {
+    if (!currentRide) return;
+    try {
+      if (status === 'arrived') await API.arrivedRide(currentRide._id);
+      else if (status === 'start') await API.startRide(currentRide._id);
+      else if (status === 'complete') {
+        await API.completeRide(currentRide._id);
+        const userId = currentRide.userId?._id || currentRide.userId;
+        SOCKET.emit('ride:complete', { rideId: currentRide._id, userId });
+        currentRide = null;
+        document.getElementById('activeRideSection').style.display = 'none';
+        alert('Viaje completado!');
+        return;
+      }
+      currentRide = null;
+      document.getElementById('activeRideSection').style.display = 'none';
+      alert('Estado actualizado');
+    } catch (err) { alert('Error: ' + err.message); }
+  }
+
+  async function cancelCurrentRide() {
+    if (!currentRide || !confirm('Cancelar viaje?')) return;
+    try {
+      const userId = currentRide.userId?._id || currentRide.userId;
+      SOCKET.emit('ride:cancelled', { rideId: currentRide._id, userId });
+      await API.cancelRide(currentRide._id);
+      currentRide = null;
+      document.getElementById('activeRideSection').style.display = 'none';
+    } catch {}
   }
 
   SOCKET.on('ride:new', (data) => {
+    if (!available) return;
     const container = document.getElementById('requestsContainer');
     const item = document.createElement('div');
     item.className = 'request-item';
-    item.innerHTML = '<div class="info"><div class="name">Nuevo viaje</div><div class="detail">' + (data.pickup?.address || 'Casma') + ' → ' + (data.destination?.address || 'Destino') + '</div><div class="detail" style="color:#f59e0b">S/ ' + (data.price || 8) + '.00</div></div><button class="btn-small" onclick="acceptRide(\'' + (data.rideId || '') + '\')">Aceptar</button>';
+    item.id = 'req-' + data.rideId;
+    item.innerHTML = '<div class="info"><div class="name"><i class="fas fa-user"></i> ' + (data.userName || 'Usuario') + '</div><div class="detail">' + (data.pickup?.address || '---') + ' → ' + (data.destination?.address || '---') + '</div><div class="price">S/ ' + (data.price || 0) + '.00</div></div><button class="btn-small" onclick="acceptRide(\'' + data.rideId + '\',\'' + (data.userName || '') + '\',\'' + (data.pickup?.address || '') + '\',\'' + (data.destination?.address || '') + '\',' + (data.price || 8) + ')">Aceptar</button>';
     container.prepend(item);
+    setTimeout(() => { const el = document.getElementById('req-' + data.rideId); if (el) el.remove(); }, 30000);
   });
 
-  function acceptRide(rideId) {
-    alert('Viaje aceptado! (ID: ' + rideId + ')');
-    SOCKET.emit('ride:accept', { rideId, driverId: 'current' });
+  SOCKET.on('ride:taken', (data) => {
+    const el = document.getElementById('req-' + data.rideId);
+    if (el) el.remove();
+  });
+
+  async function acceptRide(rideId, userName, pickup, dest, price) {
+    if (!available) { alert('Activate primero'); return; }
+    try {
+      await API.acceptRide(rideId);
+      SOCKET.emit('ride:accept', { rideId, userId: '' });
+      currentRide = { _id: rideId, userId: { name: userName }, pickup: { address: pickup }, destination: { address: dest }, price, status: 'accepted' };
+      document.getElementById('requestsContainer').innerHTML = '';
+      showActiveRide(currentRide);
+      alert('Viaje aceptado! Dirigete al punto de recogida.');
+    } catch (err) { alert('Error: ' + err.message); }
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    SOCKET.connect();
+    loadActiveRide();
   });
 </script>
 </body>

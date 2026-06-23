@@ -9,6 +9,7 @@ import mongoose from 'mongoose';
 import authRoutes from './routes/auth.js';
 import rideRoutes from './routes/rides.js';
 import driverRoutes from './routes/drivers.js';
+import ownerRoutes from './routes/owner.js';
 import { setupSocketHandlers } from './socket/handler.js';
 
 const app = express();
@@ -23,6 +24,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/rides', rideRoutes);
 app.use('/api/drivers', driverRoutes);
+app.use('/api/owner', ownerRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'MotoCasma API' });
